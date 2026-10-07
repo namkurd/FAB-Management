@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FAB Management</title>
+<meta name="description" content="Who in the DTF Club is best at waiver, FAAB and free-agent pickups — scored with the league's own points.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root{
+    --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1;
+    --text:#131B24; --text-2:#4B5867; --text-3:#7C8896;
+    --border:#D7DEE4; --border-soft:#E4E9ED;
+    --accent:#157EED; --good:#1A8F4E; --bad:#C4314B; --warn:#B5750E;
+    --shadow:0 1px 2px rgba(19,27,36,.06), 0 6px 20px rgba(19,27,36,.06);
+    --font-display:'IBM Plex Sans Condensed',system-ui,sans-serif;
+    --font-body:'IBM Plex Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
+      --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
+      --border:#26323F; --border-soft:#202B36;
+      --accent:#4E8DE0; --good:#3FBF78; --bad:#F06A80; --warn:#D9A233;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
+    --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
+    --border:#26323F; --border-soft:#202B36;
+    --accent:#4E8DE0; --good:#3FBF78; --bad:#F06A80; --warn:#D9A233;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{overflow-x:hidden;}
+  body{background:var(--bg); color:var(--text); font-family:var(--font-body); margin:0; padding:20px 16px; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:14px;}
+  header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 24px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:28px; margin:0 0 2px;}
+  h2{font-family:var(--font-display); font-weight:700; font-size:18px; margin:0;}
+  .sub{margin:0; color:var(--text-2); font-size:13.5px; max-width:62ch;}
+  .meta{font-family:var(--font-mono); font-size:11.5px; color:var(--text-3);}
+  .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2);
+    font-family:var(--font-mono); font-size:12px; font-weight:500; padding:6px 10px; border-radius:999px; cursor:pointer;}
+  .chip[aria-pressed="true"]{background:var(--text); color:var(--bg); border-color:var(--text);}
+  .segmented{display:flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface);}
+  .segmented button{appearance:none; border:none; background:transparent; color:var(--text-2); font-family:var(--font-body);
+    font-weight:600; font-size:13px; padding:7px 12px; cursor:pointer;}
+  .segmented button + button{border-left:1px solid var(--border);}
+  .segmented button[aria-pressed="true"]{background:var(--surface-2); color:var(--text);}
+  .panel{background:var(--surface); border:1px solid var(--border-soft); border-radius:14px; box-shadow:var(--shadow); padding:14px 16px;}
+  .panel-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px 16px; margin-bottom:10px;}
+  .note{font-size:12px; color:var(--text-3);}
+  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--border-soft); border-radius:12px; overflow:hidden; border:1px solid var(--border-soft);}
+  .tile{background:var(--surface); padding:12px 14px;}
+  .tile .num{font-family:var(--font-mono); font-weight:600; font-size:19px; font-variant-numeric:tabular-nums;}
+  .tile .lbl{font-size:11.5px; color:var(--text-3); margin-top:2px;}
+  .tile .who{font-size:12.5px; color:var(--text-2); margin-top:4px;}
+  .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:7px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border-soft);}
+  th:first-child,td:first-child,th.l,td.l{text-align:left;}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-3); font-weight:600; cursor:pointer; user-select:none; position:sticky; top:0; background:var(--surface);}
+  th[data-dir="asc"]::after{content:" ▲"; font-size:9px;}
+  th[data-dir="desc"]::after{content:" ▼"; font-size:9px;}
+  td{font-variant-numeric:tabular-nums; font-family:var(--font-mono); font-size:12.5px;}
+  td.l{font-family:var(--font-body); font-size:13px;}
+  tbody tr{cursor:default;}
+  #board tbody tr{cursor:pointer;}
+  tbody tr:hover{background:var(--surface-2);}
+  tr.sel{background:var(--surface-2);}
+  .mgr{display:inline-flex; align-items:center; gap:7px; font-weight:600;}
+  .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .pos{font-family:var(--font-mono); font-size:11px; color:var(--text-3); margin-right:4px;}
+  .pos-pill{display:inline-block; min-width:30px; font-family:var(--font-mono); font-size:10.5px; color:var(--text-2); background:var(--surface-2); border-radius:4px; padding:1px 4px; text-align:center; margin-right:6px;}
+  .good{color:var(--good);} .bad{color:var(--bad);} .muted{color:var(--text-3);}
+  .tag{display:inline-block; font-family:var(--font-mono); font-size:10px; padding:1px 5px; border-radius:4px; border:1px solid var(--border); color:var(--text-2); margin-left:4px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:860px){ .grid2{grid-template-columns:1fr;} }
+  #scatter{display:block; width:100%; height:360px;}
+  .axis text{fill:var(--text-3); font-family:var(--font-mono); font-size:10.5px;}
+  .axis path,.axis line{stroke:var(--border);}
+  .gridline line{stroke:var(--border-soft);}
+  .toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  input[type=search],select{font:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); min-width:0;}
+  input[type=search]{width:220px; max-width:100%;}
+  .tooltip{position:fixed; pointer-events:none; z-index:50; background:var(--text); color:var(--bg); font-size:12px; line-height:1.45;
+    padding:8px 10px; border-radius:8px; max-width:300px; opacity:0; transition:opacity .1s; box-shadow:var(--shadow);}
+  .tooltip b{font-weight:600;}
+  .drill-list{list-style:none; margin:0; padding:0; font-size:13px;}
+  .drill-list li{display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid var(--border-soft);}
+  .drill-list li span:last-child{font-family:var(--font-mono); font-size:12px; white-space:nowrap;}
+  .drill-list .ctx{color:var(--text-3); font-size:11.5px; font-family:var(--font-mono);}
+  .drill-cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px;}
+  h3{font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3); margin:0 0 6px; font-weight:600;}
+  details summary{cursor:pointer; font-weight:600; font-family:var(--font-display); font-size:16px;}
+  .method{font-size:13px; color:var(--text-2); line-height:1.55;}
+  .method dt{font-weight:600; color:var(--text); margin-top:8px;}
+  .method dd{margin:2px 0 0;}
+  .empty{color:var(--text-3); font-size:13px; padding:10px 0;}
+  .more{appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2); font:inherit; font-size:12.5px; border-radius:8px; padding:6px 12px; cursor:pointer; margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>FAB Management</h1>
+      <p class="sub">Who in the DTF Club is actually good at the waiver wire? Every FAAB claim and free-agent add since 2021, scored with the league's own points.</p>
+    </div>
+    <div class="meta" id="updated">Loading…</div>
+  </header>
+
+  <div class="controls">
+    <div class="chips" id="seasonChips"></div>
+    <div class="segmented" id="typeSeg">
+      <button data-v="all" aria-pressed="true">All adds</button>
+      <button data-v="W" aria-pressed="false">FAAB waivers</button>
+      <button data-v="F" aria-pressed="false">Free agents</button>
+    </div>
+    <div class="segmented" id="basisSeg">
+      <button data-v="st" aria-pressed="true">Started pts</button>
+      <button data-v="ro" aria-pressed="false">Rostered pts</button>
+    </div>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Manager leaderboard</h2>
+      <span class="note" id="boardNote">Click a manager for their best and worst moves. Hover headers for definitions.</span>
+    </div>
+    <div class="table-wrap"><table id="board"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel" id="drill" hidden>
+    <div class="panel-head"><h2 id="drillTitle"></h2><span class="note" id="drillNote"></span></div>
+    <div class="drill-cols" id="drillBody"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="panel-head"><h2>FAAB spent vs. production</h2><span class="note">one dot per manager-season</span></div>
+      <svg id="scatter" role="img" aria-label="Scatter plot of FAAB dollars spent versus points from waiver claims"></svg>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Biggest regrets</h2><span class="note">dropped players who were then started by someone else</span></div>
+      <ul class="drill-list" id="regrets"></ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Every pickup</h2>
+      <div class="toolbar">
+        <input type="search" id="q" placeholder="Search player or manager">
+        <select id="posSel"><option value="">All positions</option></select>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="adds"><thead></thead><tbody></tbody></table></div>
+    <button class="more" id="moreBtn" hidden>Show more</button>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary>How this is scored</summary>
+      <dl class="method">
+        <dt>Started points (headline)</dt>
+        <dd>Points the added player scored in that manager's starting lineup, regular season only, from the week of the add until he left the roster. Benched weeks count 0. Points come straight from Sleeper's matchup data, so they use the league's exact scoring.</dd>
+        <dt>Rostered points</dt>
+        <dd>Same window, counting every week he was on the roster whether started or not — pure talent-spotting. The add week only counts if the move happened before that week's first kickoff (or the player was started).</dd>
+        <dt>Regret / Net</dt>
+        <dd>Regret is what a dropped player went on to score <em>in other managers' starting lineups</em> for the rest of that regular season. Net = started points of the add minus regret of the player dropped in the same transaction.</dd>
+        <dt>Hit rate</dt>
+        <dd>Share of completed adds that produced at least <span id="hitT">30</span> started points.</dd>
+        <dt>Claim success</dt>
+        <dd>Completed FAAB claims ÷ (completed + failed). "Outbid" failures = another team won the player; "Roster" failures = the claim would have left too many players on the roster.</dd>
+        <dt>Early / Chase</dt>
+        <dd>Timing uses league-scoring points per game for every NFL player (Sleeper weekly stats × league scoring settings). <b>Early</b>: low output in the 3 weeks before the add, startable output in the 4 weeks after (threshold 12 PPG; 18 for QB, 10 for K/DEF). <b>Chase</b>: added after a big stretch, then fell off.</dd>
+        <dt>Seasons</dt>
+        <dd>Regular season ends at week 15 through 2025 and week 14 from 2026. Playoff started points are tracked separately and not in the headline. The in-progress season only includes completed weeks; "All" totals include it, so compare per-season and per-add columns when mixing in a partial year.</dd>
+        <dt>Limits</dt>
+        <dd>Sleeper only exposes winning bids, so overpay vs. the market can't be measured. Points are hindsight value, not what a pickup looked like at the time.</dd>
+      </dl>
+    </details>
+  </section>
+  <p class="meta" style="text-align:center">Data: Sleeper API · nflverse schedule · refreshed hourly by GitHub Actions</p>
+</div>
+<div class="tooltip" id="tip"></div>
+
+<script>
+const PALETTE_LIGHT = ['#157eed','#e81c52','#d44f14','#b07014','#967f15','#619115','#199950','#0d9298','#188db1','#7961f9','#b326f9','#d21cba','#5f7187','#8a6440'];
+const PALETTE_DARK  = ['#3b8ff4','#f64063','#e85d25','#c27e26','#a68e26','#6ea127','#2ca95e','#2ba1a7','#2b9dc2','#877bf4','#b959f4','#e630cc','#8597ac','#b08860'];
+const state = { season:'all', type:'all', basis:'st', sortKey:'pv', sortDir:'desc', addSortKey:'v', addSortDir:'desc', sel:null, q:'', pos:'', limit:100 };
+let DATA = null;
+
+function isDark(){
+  const t = document.documentElement.getAttribute('data-theme');
+  if(t) return t==='dark';
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function colorOf(m){
+  const i = DATA.managers.indexOf(m);
+  const p = isDark() ? PALETTE_DARK : PALETTE_LIGHT;
+  return i < 0 ? 'var(--text-3)' : p[i % p.length];
+}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (v, d=1) => v==null || !isFinite(v) ? '—' : Number(v).toLocaleString(undefined,{minimumFractionDigits:d, maximumFractionDigits:d});
+const pct = v => v==null || !isFinite(v) ? '—' : Math.round(v*100)+'%';
+const mgrHtml = m => `<span class="mgr"><span class="dot" style="background:${colorOf(m)}"></span>${esc(m)}</span>`;
+const seasonInProgress = s => { const m = DATA.seasons.find(x=>x.s===s); return m && !m.finished; };
+
+function threshold(pos){ return pos==='QB' ? 18 : (pos==='K'||pos==='DEF') ? 10 : 12; }
+function timing(a){
+  if(a.post==null || a.postg < 2) return null;
+  const T = threshold(a.pos);
+  if(a.post >= T && (a.pre==null ? a.w > 1 : a.pre < T*0.6)) return 'early';
+  if(a.pre!=null && a.preg>=2 && a.pre >= T && a.post < T*0.6) return 'chase';
+  return null;
+}
+function regretOf(a){ return (a.dr||[]).reduce((s,d)=>s+d.sbo,0); }
+function val(a){ return a[state.basis]; }
+
+function filtered(){
+  return DATA.adds.filter(a => (state.season==='all' || a.s===+state.season) && (state.type==='all' || a.ty===state.type));
+}
+function filteredFails(){
+  return DATA.fails.filter(f => state.season==='all' || f.s===+state.season);
+}
+
+function aggregate(){
+  const adds = filtered(), fails = filteredFails();
+  const rows = {};
+  const get = m => rows[m] ||= {m, n:0, pv:0, po:0, faab:0, faabPv:0, hits:0, regret:0, early:0, chase:0, wOk:0, wFail:0, outbid:0, roster:0, seasons:new Set()};
+  DATA.seasons.forEach(s => { if(state.season==='all' || s.s===+state.season) s.teams.forEach(t => get(t.m).seasons.add(s.s)); });
+  for(const a of adds){
+    const r = get(a.m);
+    r.n++; r.pv += val(a); r.po += a.po;
+    if(a.ty==='W'){ r.faab += a.b; r.faabPv += val(a); r.wOk++; }
+    if(a.st >= DATA.hit_threshold) r.hits++;
+    r.regret += regretOf(a);
+    const t = timing(a); if(t==='early') r.early++; if(t==='chase') r.chase++;
+  }
+  if(state.type!=='F') for(const f of fails){
+    const r = get(f.m); r.wFail++;
+    if(f.c==='outbid') r.outbid++; if(f.c==='roster') r.roster++;
+  }
+  return Object.values(rows).map(r => ({...r,
+    nSeasons: r.seasons.size,
+    perAdd: r.n ? r.pv/r.n : null,
+    perSeason: r.seasons.size ? r.pv/r.seasons.size : null,
+    net: r.pv - r.regret,
+    pvPerDollar: r.faab ? r.faabPv / r.faab : null,
+    hitRate: r.n ? r.hits/r.n : null,
+    claimRate: (r.wOk + r.wFail) ? r.wOk/(r.wOk + r.wFail) : null,
+  })).filter(r => r.n || r.wFail);
+}
+
+const BOARD_COLS = [
+  {k:'m', l:'Manager', cls:'l', tip:'Ranked by person, not roster slot.'},
+  {k:'n', l:'Adds', d:0, tip:'Completed pickups (waiver + free agent per the filter).'},
+  {k:'pv', l:'Pickup pts', d:0, tip:'Total started (or rostered) regular-season points from pickups.'},
+  {k:'perSeason', l:'Pts / season', d:0, tip:'Pickup points divided by seasons played in the filter.'},
+  {k:'perAdd', l:'Pts / add', d:1},
+  {k:'net', l:'Net', d:0, tip:'Pickup points minus what the players dropped in those moves scored in other teams\' lineups.'},
+  {k:'hitRate', l:'Hit rate', p:true, tip:'Share of adds producing at least the hit threshold in started points.'},
+  {k:'faab', l:'FAAB $', d:0, tip:'Winning bids (sum).'},
+  {k:'pvPerDollar', l:'Pts / $', d:2, tip:'FAAB-claim points per FAAB dollar spent. $0 claims are counted in points but not dollars.'},
+  {k:'claimRate', l:'Claim win %', p:true, tip:'Completed FAAB claims ÷ all FAAB claims submitted.'},
+  {k:'outbid', l:'Outbid', d:0, tip:'Failed claims because another team won the player.'},
+  {k:'roster', l:'Roster fails', d:0, tip:'Failed claims because the roster would be too full — roster-management sloppiness.'},
+  {k:'early', l:'Early', d:0, tip:'Pickups made before a breakout (see methodology).'},
+  {k:'regret', l:'Regret', d:0, tip:'Points dropped players scored for other teams afterwards. Lower is better.'},
+];
+
+function renderHead(table, cols, key, dir, onSort){
+  const thead = table.querySelector('thead');
+  thead.innerHTML = '<tr>' + cols.map(c => `<th class="${c.cls||''}" data-k="${c.k}" ${c.k===key?`data-dir="${dir}"`:''} ${c.tip?`data-tip="${esc(c.tip)}"`:''}>${c.l}</th>`).join('') + '</tr>';
+  thead.querySelectorAll('th').forEach(th => {
+    th.onclick = ev => { ev.stopPropagation(); onSort(th.dataset.k); };
+    if(th.dataset.tip){
+      th.onmousemove = ev => showTip(ev, th.dataset.tip);
+      th.onmouseleave = hideTip;
+    }
+  });
+}
+function sorter(key, dir){
+  return (a,b) => {
+    let x=a[key], y=b[key];
+    if(x==null && y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    const r = typeof x==='string' ? x.localeCompare(y) : x - y;
+    return dir==='asc' ? r : -r;
+  };
+}
+
+function renderBoard(){
+  const rows = aggregate().sort(sorter(state.sortKey, state.sortDir));
+  const tbl = document.getElementById('board');
+  const cols = BOARD_COLS.map(c => c.k==='pv' ? {...c, l: state.basis==='st' ? 'Started pts' : 'Rostered pts'} : c);
+  renderHead(tbl, cols, state.sortKey, state.sortDir, k => {
+    if(state.sortKey===k) state.sortDir = state.sortDir==='desc' ? 'asc' : 'desc';
+    else { state.sortKey=k; state.sortDir = (k==='m' || k==='regret' || k==='roster' || k==='outbid') ? 'asc' : 'desc'; }
+    renderBoard();
+  });
+  tbl.querySelector('tbody').innerHTML = rows.map(r => `<tr data-m="${esc(r.m)}" class="${r.m===state.sel?'sel':''}">` + cols.map(c => {
+    if(c.k==='m') return `<td class="l">${mgrHtml(r.m)}</td>`;
+    const v = r[c.k];
+    const txt = c.p ? pct(v) : fmt(v, c.d ?? 1);
+    const cls = c.k==='net' ? (v>=0?'good':'bad') : '';
+    return `<td class="${cls}">${txt}</td>`;
+  }).join('') + '</tr>').join('');
+  tbl.querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => {
+    state.sel = state.sel===tr.dataset.m ? null : tr.dataset.m;
+    renderBoard(); renderDrill();
+    if(state.sel) document.getElementById('drill').scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+  renderTiles(rows);
+}
+
+function renderTiles(rows){
+  const adds = filtered();
+  const best = (arr, k, dir=-1) => arr.filter(r=>r[k]!=null).sort((a,b)=>dir*(a[k]-b[k]))[0];
+  const topAdd = adds.slice().sort((a,b)=>val(b)-val(a))[0];
+  const bestPv = best(rows,'pv'), bestRate = best(rows.filter(r=>r.n>=10),'hitRate'), bestEff = best(rows.filter(r=>r.faab>=50),'pvPerDollar');
+  const faab = adds.filter(a=>a.ty==='W').reduce((s,a)=>s+a.b,0);
+  const tiles = [
+    {num: fmt(adds.length,0), lbl:'completed adds', who: `${fmt(faab,0)} FAAB dollars spent`},
+    bestPv && {num: fmt(bestPv.pv,0), lbl: state.basis==='st'?'most started pickup pts':'most rostered pickup pts', who: mgrHtml(bestPv.m)},
+    bestRate && {num: pct(bestRate.hitRate), lbl:'best hit rate (10+ adds)', who: mgrHtml(bestRate.m)},
+    bestEff && {num: fmt(bestEff.pvPerDollar,2), lbl:'pts per FAAB $ ($50+ spent)', who: mgrHtml(bestEff.m)},
+    topAdd && {num: fmt(val(topAdd),1), lbl:`best pickup · ${topAdd.s} wk ${topAdd.w}`, who: `${esc(topAdd.pl)} — ${mgrHtml(topAdd.m)}`},
+  ].filter(Boolean);
+  document.getElementById('tiles').innerHTML = tiles.map(t => `<div class="tile"><div class="num">${t.num}</div><div class="lbl">${t.lbl}</div><div class="who">${t.who}</div></div>`).join('');
+}
+
+function addLine(a, right){
+  const bid = a.ty==='W' ? `$${a.b}` : 'FA';
+  return `<li><span><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)} <span class="ctx">${a.s} wk${a.w} · ${bid}</span></span><span>${right}</span></li>`;
+}
+function renderDrill(){
+  const box = document.getElementById('drill');
+  if(!state.sel){ box.hidden = true; return; }
+  box.hidden = false;
+  const m = state.sel;
+  const adds = filtered().filter(a=>a.m===m);
+  document.getElementById('drillTitle').innerHTML = mgrHtml(m);
+  document.getElementById('drillNote').textContent = `${adds.length} adds in this view`;
+  const best = adds.slice().sort((a,b)=>val(b)-val(a)).slice(0,8);
+  const busts = adds.filter(a=>a.ty==='W' && a.b>0).sort((a,b)=> (val(a)/a.b) - (val(b)/b.b) || b.b-a.b).slice(0,8);
+  const early = adds.filter(a=>timing(a)==='early').sort((a,b)=>val(b)-val(a)).slice(0,8);
+  const regrets = adds.flatMap(a => (a.dr||[]).map(d => ({...d, s:a.s, w:a.w}))).sort((a,b)=>b.sbo-a.sbo).filter(d=>d.sbo>0).slice(0,8);
+  const list = (title, items, fn) => `<div><h3>${title}</h3>${items.length ? `<ul class="drill-list">${items.map(fn).join('')}</ul>` : '<div class="empty">None in this view.</div>'}</div>`;
+  document.getElementById('drillBody').innerHTML =
+    list('Best pickups', best, a => addLine(a, `${fmt(val(a))} pts`)) +
+    list('Worst FAAB spends (pts per $)', busts, a => addLine(a, `${fmt(val(a),0)} pts / $${a.b}`)) +
+    list('Ahead of the breakout', early, a => addLine(a, `${fmt(a.pre??0)} → ${fmt(a.post)} ppg`)) +
+    list('Dropped, then started elsewhere', regrets, d => `<li><span><span class="pos-pill">${esc(d.pos)}</span>${esc(d.pl)} <span class="ctx">${d.s} wk${d.w}</span></span><span class="bad">${fmt(d.sbo)} pts</span></li>`);
+}
+
+function renderRegrets(){
+  const drops = DATA.drops.filter(d => (state.season==='all' || d.s===+state.season) && (state.type==='all' || d.ty===state.type) && d.sbo>0)
+    .sort((a,b)=>b.sbo-a.sbo).slice(0,12);
+  document.getElementById('regrets').innerHTML = drops.length ? drops.map(d => `<li><span>${mgrHtml(d.m)} dropped <span class="pos-pill">${esc(d.pos)}</span>${esc(d.pl)} <span class="ctx">${d.s} wk${d.w}</span></span><span class="bad">${fmt(d.sbo)} pts</span></li>`).join('') : '<li class="empty">No regrets yet.</li>';
+}
+
+function renderScatter(){
+  const svg = d3.select('#scatter'); svg.selectAll('*').remove();
+  const node = svg.node(); const W = node.clientWidth || 500, H = node.clientHeight || 360;
+  const M = {t:12, r:16, b:38, l:48};
+  const pts = [];
+  DATA.seasons.forEach(s => {
+    if(state.season!=='all' && s.s!==+state.season) return;
+    s.teams.forEach(t => {
+      const a = DATA.adds.filter(x => x.s===s.s && x.m===t.m && x.ty==='W');
+      pts.push({m:t.m, s:s.s, faab:a.reduce((q,x)=>q+x.b,0), pv:a.reduce((q,x)=>q+val(x),0), n:a.length, prog:!s.finished});
+    });
+  });
+  if(!pts.length) return;
+  const x = d3.scaleLinear().domain([0, Math.max(200, d3.max(pts,d=>d.faab))]).nice().range([M.l, W-M.r]);
+  const y = d3.scaleLinear().domain([0, d3.max(pts,d=>d.pv)||1]).nice().range([H-M.b, M.t]);
+  svg.append('g').attr('class','gridline').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W-M.l-M.r)).tickFormat('')).select('.domain').remove();
+  svg.append('g').attr('class','axis').attr('transform',`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(6).tickFormat(d=>'$'+d));
+  svg.append('g').attr('class','axis').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5));
+  svg.append('text').attr('x', W-M.r).attr('y', H-6).attr('text-anchor','end').attr('fill','var(--text-3)').attr('font-size',11).text('FAAB spent →');
+  svg.append('text').attr('x', M.l+4).attr('y', M.t+10).attr('fill','var(--text-3)').attr('font-size',11).text(`↑ ${state.basis==='st'?'started':'rostered'} pts from FAAB claims`);
+  svg.append('g').selectAll('circle').data(pts).join('circle')
+    .attr('cx',d=>x(d.faab)).attr('cy',d=>y(d.pv)).attr('r',d=> state.sel && d.m!==state.sel ? 4 : 6)
+    .attr('fill',d=>colorOf(d.m)).attr('fill-opacity',d=> state.sel && d.m!==state.sel ? .18 : (d.prog?.45:.85))
+    .attr('stroke','var(--surface)').attr('stroke-width',1.5).style('cursor','pointer')
+    .on('mousemove',(ev,d)=>showTip(ev, `<b>${esc(d.m)}</b> · ${d.s}${d.prog?' (in progress)':''}<br>$${d.faab} on ${d.n} claims<br>${fmt(d.pv)} pts · ${d.faab?fmt(d.pv/d.faab,2):'—'} pts/$`))
+    .on('mouseleave',hideTip)
+    .on('click',(ev,d)=>{ ev.stopPropagation(); showTip(ev, `<b>${esc(d.m)}</b> · ${d.s}<br>$${d.faab} on ${d.n} claims<br>${fmt(d.pv)} pts`); });
+}
+
+const ADD_COLS = [
+  {k:'pl', l:'Player', cls:'l'}, {k:'m', l:'Manager', cls:'l'}, {k:'s', l:'Season', d:0}, {k:'w', l:'Wk', d:0},
+  {k:'ty', l:'Type', cls:'l'}, {k:'b', l:'Bid', d:0}, {k:'v', l:'Pts', d:1}, {k:'po', l:'Playoff', d:1},
+  {k:'ws', l:'Wks started', d:0}, {k:'end', l:'Ended', cls:'l'}, {k:'dropped', l:'Dropped', cls:'l'}, {k:'rg', l:'Regret', d:1},
+];
+function renderAdds(){
+  const q = state.q.toLowerCase();
+  let rows = filtered().filter(a => (!state.pos || a.pos===state.pos) && (!q || a.pl.toLowerCase().includes(q) || a.m.toLowerCase().includes(q) || (a.dr||[]).some(d=>d.pl.toLowerCase().includes(q))))
+    .map(a => ({...a, v: val(a), rg: regretOf(a), dropped: (a.dr||[]).map(d=>d.pl).join(', ')}));
+  rows.sort(sorter(state.addSortKey, state.addSortDir));
+  const tbl = document.getElementById('adds');
+  renderHead(tbl, ADD_COLS.map(c=>c.k==='v'?{...c,l:state.basis==='st'?'Started':'Rostered'}:c), state.addSortKey, state.addSortDir, k => {
+    if(state.addSortKey===k) state.addSortDir = state.addSortDir==='desc'?'asc':'desc'; else { state.addSortKey=k; state.addSortDir = ['pl','m','ty','end','dropped'].includes(k)?'asc':'desc'; }
+    renderAdds();
+  });
+  const shown = rows.slice(0, state.limit);
+  tbl.querySelector('tbody').innerHTML = shown.map(a => {
+    const t = timing(a);
+    const tag = t ? `<span class="tag" style="color:var(--${t==='early'?'good':'warn'})">${t}</span>` : '';
+    const prog = seasonInProgress(a.s) ? '<span class="tag">live</span>' : '';
+    return `<tr><td class="l"><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)}${tag}</td><td class="l">${mgrHtml(a.m)}</td><td>${a.s}${prog}</td><td>${a.w}</td>
+      <td class="l">${a.ty==='W'?'Waiver':'FA'}</td><td>${a.ty==='W'?'$'+a.b:'—'}</td><td>${fmt(a.v)}</td><td class="muted">${a.po?fmt(a.po):'—'}</td>
+      <td>${a.ws}</td><td class="l muted">${a.end}</td><td class="l muted">${esc(a.dropped)||'—'}</td><td class="${a.rg>0?'bad':'muted'}">${a.rg?fmt(a.rg):'—'}</td></tr>`;
+  }).join('') || `<tr><td class="l empty" colspan="${ADD_COLS.length}">No pickups match.</td></tr>`;
+  const more = document.getElementById('moreBtn');
+  more.hidden = rows.length <= state.limit;
+  more.textContent = `Show more (${rows.length - state.limit} left)`;
+}
+
+function renderAll(){ renderBoard(); renderDrill(); renderScatter(); renderRegrets(); renderAdds(); }
+
+const tip = document.getElementById('tip');
+function showTip(ev, html){
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const w = tip.offsetWidth, h = tip.offsetHeight, pad = 14;
+  let x = ev.clientX + pad, y = ev.clientY + pad;
+  if(x + w > innerWidth - 6) x = Math.max(6, ev.clientX - w - pad);
+  if(y + h > innerHeight - 6) y = Math.max(6, innerHeight - h - 6);
+  tip.style.left = x+'px'; tip.style.top = y+'px';
+}
+function hideTip(){ tip.style.opacity = 0; }
+document.addEventListener('click', hideTip);
+
+function wireSeg(id, key){
+  document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
+    state[key] = b.dataset.v; state.limit = 100;
+    document.querySelectorAll(`#${id} button`).forEach(x => x.setAttribute('aria-pressed', x===b));
+    renderAll();
+  });
+}
+
+fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
+  DATA = d;
+  document.getElementById('hitT').textContent = d.hit_threshold;
+  const gen = new Date(d.generated);
+  document.getElementById('updated').textContent = `Updated ${gen.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · NFL ${d.nfl.season} wk ${d.nfl.week}`;
+  const chips = document.getElementById('seasonChips');
+  const opts = ['all', ...d.seasons.map(s=>s.s)];
+  chips.innerHTML = opts.map(o => { const s = d.seasons.find(x=>x.s===o); return `<button class="chip" data-v="${o}" aria-pressed="${o==='all'}">${o==='all'?'All seasons':o}${s&&!s.finished?'*':''}</button>`; }).join('');
+  chips.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    state.season = c.dataset.v; state.limit = 100;
+    chips.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x===c));
+    renderAll();
+  });
+  const pos = [...new Set(d.adds.map(a=>a.pos))].filter(Boolean).sort();
+  document.getElementById('posSel').innerHTML += pos.map(p=>`<option>${esc(p)}</option>`).join('');
+  document.getElementById('posSel').onchange = e => { state.pos = e.target.value; state.limit=100; renderAdds(); };
+  document.getElementById('q').oninput = e => { state.q = e.target.value; state.limit=100; renderAdds(); };
+  document.getElementById('moreBtn').onclick = () => { state.limit += 200; renderAdds(); };
+  wireSeg('typeSeg','type'); wireSeg('basisSeg','basis');
+  const inprog = d.seasons.find(s=>!s.finished);
+  if(inprog) document.getElementById('boardNote').textContent = `* ${inprog.s} is in progress (through week ${inprog.done}). Click a manager for their best and worst moves.`;
+  renderAll();
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderScatter, 150); });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', renderAll);
+}).catch(err => {
+  document.getElementById('updated').textContent = 'Could not load data.json — ' + err;
+});
+</script>
+</body>
+</html>
