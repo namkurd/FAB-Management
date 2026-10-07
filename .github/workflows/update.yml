@@ -1,0 +1,58 @@
+name: Update waiver data
+
+on:
+  schedule:
+    # Hourly. GitHub runs scheduled jobs approximately on time and pauses them after
+    # 60 days without repo commits - if updates stop, re-enable in the Actions tab.
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore Sleeper cache (completed weeks only)
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: sleeper-cache-${{ github.run_id }}
+          restore-keys: |
+            sleeper-cache-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Rebuild data.json
+        run: python update_waivers.py
+
+      - name: Commit data.json if anything but the timestamp changed
+        run: |
+          changed=$(python -c "
+          import json, subprocess
+          try:
+              old = json.loads(subprocess.check_output(['git', 'show', 'HEAD:data.json']))
+          except Exception:
+              old = {}
+          new = json.load(open('data.json'))
+          old.pop('generated', None); new.pop('generated', None)
+          print('yes' if old != new else 'no')
+          ")
+          if [ "$changed" != "yes" ]; then echo "No data changes"; exit 0; fi
+          git config user.name "fab-management-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data.json
+          git commit -m "Update waiver data"
+          git push
