@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sit / Start</title>
+<meta name="description" content="DTF Club lineup decisions: starters who scored below replacement while a better option sat on the bench.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1;
+    --text:#131B24; --text-2:#4B5867; --text-3:#7C8896;
+    --border:#D7DEE4; --border-soft:#E4E9ED;
+    --good:#1A7F45; --good-rgb:26,127,69; --bad:#C4314B;
+    --heat:21,126,237; --heatneg:196,49,75;
+    --shadow:0 1px 2px rgba(19,27,36,.06), 0 6px 20px rgba(19,27,36,.06);
+    --font-display:'IBM Plex Sans Condensed',system-ui,sans-serif;
+    --font-body:'IBM Plex Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
+      --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
+      --border:#26323F; --border-soft:#202B36;
+      --good:#3FBF78; --good-rgb:63,191,120; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
+    --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
+    --border:#26323F; --border-soft:#202B36;
+    --good:#3FBF78; --good-rgb:63,191,120; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{overflow-x:hidden;}
+  body{background:var(--bg); color:var(--text); font-family:var(--font-body); margin:0; padding:20px 16px; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:14px;}
+  header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 24px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:28px; margin:0 0 2px;}
+  h2{font-family:var(--font-display); font-weight:700; font-size:18px; margin:0;}
+  h3{font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3); margin:0 0 8px; font-weight:600;}
+  .sub{margin:0; color:var(--text-2); font-size:13.5px; max-width:62ch;}
+  .meta{font-family:var(--font-mono); font-size:11.5px; color:var(--text-3);}
+  .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2);
+    font-family:var(--font-mono); font-size:12px; font-weight:500; padding:6px 10px; border-radius:999px; cursor:pointer;}
+  .chip[aria-pressed="true"]{background:var(--text); color:var(--bg); border-color:var(--text);}
+  .segmented{display:flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface);}
+  .segmented button{appearance:none; border:none; background:transparent; color:var(--text-2); font-family:var(--font-body);
+    font-weight:600; font-size:13px; padding:7px 12px; cursor:pointer;}
+  .segmented button + button{border-left:1px solid var(--border);}
+  .segmented button[aria-pressed="true"]{background:var(--surface-2); color:var(--text);}
+  .hint{font-size:12px; color:var(--text-3);}
+  .panel{background:var(--surface); border:1px solid var(--border-soft); border-radius:14px; box-shadow:var(--shadow); padding:14px 16px;}
+  .panel-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px 16px; margin-bottom:10px;}
+  .note{font-size:12px; color:var(--text-3);}
+  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1px; background:var(--border-soft); border-radius:12px; overflow:hidden; border:1px solid var(--border-soft);}
+  .tile{background:var(--surface); padding:12px 14px; cursor:default;}
+  .tile .lbl{font-size:11.5px; color:var(--text-3); text-transform:uppercase; letter-spacing:.4px; font-weight:600;}
+  .tile .num{font-family:var(--font-mono); font-weight:600; font-size:20px; font-variant-numeric:tabular-nums; margin-top:4px;}
+  .tile .who{font-size:13px; color:var(--text-2); margin-top:3px;}
+  .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:7px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border-soft);}
+  th:first-child,td:first-child,th.l,td.l{text-align:left;}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-3); font-weight:600; cursor:pointer; user-select:none; background:var(--surface);}
+  th[data-dir="asc"]::after{content:" ▲"; font-size:9px;}
+  th[data-dir="desc"]::after{content:" ▼"; font-size:9px;}
+  td{font-variant-numeric:tabular-nums; font-family:var(--font-mono); font-size:12.5px;}
+  td.l{font-family:var(--font-body); font-size:13px;}
+  td[data-t]{cursor:help;}
+  td[data-t]:hover{text-decoration:underline dotted var(--text-3); text-underline-offset:3px;}
+  #board tbody tr{cursor:pointer;}
+  tbody tr:hover{background:var(--surface-2);}
+  tr.sel td{background:var(--surface-2);}
+  .mgr{display:inline-flex; align-items:center; gap:7px; font-weight:600;}
+  .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .pos-pill{display:inline-block; min-width:30px; font-family:var(--font-mono); font-size:10.5px; color:var(--text-2); background:var(--surface-2); border-radius:4px; padding:1px 4px; text-align:center; margin-right:6px;}
+  .good{color:var(--good);} .bad{color:var(--bad);} .muted{color:var(--text-3);}
+  .tag{display:inline-block; font-family:var(--font-mono); font-size:10px; padding:1px 5px; border-radius:4px; border:1px solid var(--border); color:var(--text-2); margin-left:4px;}
+  #board td:first-child,#board th:first-child,.heat td:first-child,.heat th:first-child{position:sticky; left:0; z-index:1; background:var(--surface);}
+  #board tr.sel td:first-child,.heat tr.sel td:first-child{background:var(--surface-2);}
+  /* heatmap */
+  .heat td.c{font-family:var(--font-mono); text-align:center; min-width:62px; border-bottom:2px solid var(--surface); border-right:2px solid var(--surface); border-radius:4px; color:var(--text);}
+  .heat td.c.dim{color:var(--text-3);}
+  .heat th{text-align:center; cursor:default;}
+  .heat th:first-child{text-align:left;}
+  .heat th.cur{color:var(--text);}
+  .heat td.c small{color:inherit;opacity:.75;font-size:.8em}
+  .heat td.tot{font-weight:600;}
+  /* transaction cards */
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:760px){ .cards{grid-template-columns:1fr;} }
+  .list{list-style:none; margin:0; padding:0; font-size:13px;}
+  .list li{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border-soft); cursor:help;}
+  .list li:last-child{border-bottom:none;}
+  .list .main{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .list .ctx{display:block; color:var(--text-3); font-size:11.5px; font-family:var(--font-mono); margin-top:1px;}
+  .list .val{font-family:var(--font-mono); font-size:12.5px; white-space:nowrap; text-align:right;}
+  .list .wk{font-family:var(--font-mono); font-size:12.5px; color:var(--text-2);}
+  .list .val small{display:block; color:var(--text-3); font-size:11px;}
+  .filter-pill{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; padding:4px 8px 4px 10px; border-radius:999px; background:var(--surface-2); color:var(--text);}
+  .filter-pill button{appearance:none; border:none; background:transparent; color:var(--text-2); cursor:pointer; font-size:14px; line-height:1; padding:0 2px;}
+  .toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  input[type=search]{font:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); width:220px; max-width:100%;}
+  .tooltip{position:fixed; pointer-events:none; z-index:50; background:var(--text); color:var(--bg); font-size:12px; line-height:1.4;
+    padding:9px 11px; border-radius:8px; max-width:min(600px, calc(100vw - 12px)); opacity:0; transition:opacity .1s; box-shadow:var(--shadow);}
+  .tooltip .tt-h{font-weight:600; margin-bottom:5px;}
+  .tooltip table{font-size:11.5px; width:auto; border-collapse:collapse;}
+  .tooltip td{padding:1px 0; border:none; font-family:var(--font-mono); font-size:11.5px; color:inherit; white-space:nowrap; text-align:left;}
+  .tooltip td + td{padding-left:12px;}
+  .tooltip td.r{text-align:right;}
+  .tooltip .tt-f{margin-top:6px; padding-top:5px; border-top:1px solid color-mix(in srgb, var(--bg) 30%, transparent); opacity:.85;}
+  .tooltip .o{opacity:.6;}
+  details summary{cursor:pointer; font-weight:600; font-family:var(--font-display); font-size:16px;}
+  .method{font-size:13px; color:var(--text-2); line-height:1.55;}
+  .method dt{font-weight:600; color:var(--text); margin-top:8px;}
+  .method dd{margin:2px 0 0;}
+  .empty{color:var(--text-3); font-size:13px; padding:10px 0; cursor:default !important;}
+  .more{appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2); font:inherit; font-size:12.5px; border-radius:8px; padding:6px 12px; cursor:pointer; margin-top:8px;}
+  .heat td.c.neg{color:var(--text);}
+  .par-tbl td{text-align:right;}
+  .tag.early{color:var(--good); border-color:color-mix(in srgb,var(--good) 45%,transparent);}
+  .tag.chase{color:var(--bad); border-color:color-mix(in srgb,var(--bad) 45%,transparent);}
+  .pos{color:var(--good);} 
+  .tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:-4px;}
+  .tabs a{font-family:var(--font-display); font-weight:600; font-size:14px; color:var(--text-3); text-decoration:none; padding:6px 12px; border-bottom:2px solid transparent; margin-bottom:-1px;}
+  .tabs a[aria-current="page"]{color:var(--text); border-bottom-color:var(--text);}
+  .tabs a:hover{color:var(--text);}
+  .cards.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .cards > *{min-width:0;}
+  .list.scroll{max-height:440px; overflow-y:auto; overscroll-behavior:contain; padding-right:6px; margin-right:-6px;
+    mask-image:linear-gradient(to bottom, #000 calc(100% - 24px), transparent); -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 24px), transparent); padding-bottom:16px;}
+  h3 .cnt{font-weight:500; letter-spacing:0; text-transform:none; color:var(--text-3);}
+  @media (max-width:1000px){ .cards.three{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="tabs"><a href="index.html">Pickups</a><a href="lineup.html" aria-current="page">Sit / start</a></nav>
+  <header>
+    <div>
+      <h1>Sit / Start</h1>
+      <p class="sub">Points left on the bench — counted only when a starter finished <b>below replacement</b> and a bench player who could fill that slot finished <b>above replacement</b>. Having depth is never a penalty.</p>
+    </div>
+    <div class="meta" id="updated">Loading…</div>
+  </header>
+
+  <div class="controls">
+    <div class="chips" id="seasonChips"></div>
+    <div class="segmented" id="modeSeg" aria-label="Which misses">
+      <button data-v="clear" aria-pressed="true">Clear misses</button>
+      <button data-v="all" aria-pressed="false">+ Toss-ups</button>
+    </div>
+  </div>
+  <div class="hint" id="hint"></div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Manager leaderboard</h2>
+      <span class="note" id="boardNote">Lower is better. Hover any number for the decisions behind it; click a manager to focus.</span>
+    </div>
+    <div class="table-wrap"><table id="board"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Points left on the bench per week, by season</h2>
+      <span class="note">darker = more points lost · hover for the decisions</span>
+    </div>
+    <div class="table-wrap"><table class="heat" id="heat"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Toss-ups by season</h2>
+      <span class="note">won–lost and win % · green above 50%, red below · hover for the calls</span>
+    </div>
+    <div class="table-wrap"><table class="heat" id="toss"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <div class="panel-head" style="margin:4px 0 -4px">
+    <h2 id="cardsTitle">Decisions that mattered</h2>
+    <span id="focus"></span>
+  </div>
+  <div class="cards">
+    <section class="panel"><h3>Cost a win <span class="cnt" id="flipCnt"></span></h3><ul class="list scroll" id="flipList"></ul></section>
+    <section class="panel"><h3>Rumbles given away <span class="cnt" id="rumbleCnt"></span></h3><ul class="list scroll" id="rumbleList"></ul></section>
+    <section class="panel"><h3>Costliest benchings <span class="cnt" id="costCnt"></span></h3><ul class="list scroll" id="costList"></ul></section>
+    <section class="panel"><h3>Big-brain starts <span class="cnt" id="brainCnt"></span></h3><ul class="list scroll" id="brainList"></ul></section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Every miss</h2>
+      <div class="toolbar"><input type="search" id="q" placeholder="Search player or manager"></div>
+    </div>
+    <div class="table-wrap"><table id="misses"><thead></thead><tbody></tbody></table></div>
+    <button class="more" id="moreBtn" hidden>Show more</button>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary>How this is scored</summary>
+      <dl class="method">
+        <dt>What counts as a miss</dt>
+        <dd>In a completed regular-season week, a starter scored <b>below replacement</b> for his position, and a bench player <b>eligible for that same slot</b> (e.g. a WR for a FLEX spot, a QB for SUPER_FLEX) scored <b>above replacement</b> for his position and more than the starter. A bench player can fix only one slot per week; the biggest holes are filled first with the best eligible option. Simply having good players on the bench never counts against you, and neither does a start that was defensible going in (below).</dd>
+        <dt>Points left on the bench</dt>
+        <dd>Bench player's points − starter's points for each miss. <b>Per week</b> divides by regular-season weeks played, so seasons (and the partial current one) compare fairly.</dd>
+        <dt>Cost a win</dt>
+        <dd>A week you lost where the misses that week add up to more than the margin — the right call would have won it.</dd>
+        <dt>Rumbles lost</dt>
+        <dd>The league's standings: each week, 9 Rumbles for winning your matchup plus 1 for every team you outscored. Rumbles lost = what you'd have earned with that week's right calls (your score + points left on the bench, everyone else's score unchanged) minus what you actually earned. It counts both the flipped matchup and the teams you'd have passed.</dd>
+        <dt>Judging the call (projections)</dt>
+        <dd>Hindsight is easy, so every call is checked against <b>Sleeper's pre-game projections</b> for that week, scored with this league's settings, and sorted into a 2 × 2:</dd>
+        <dd><table class="par-tbl" style="width:auto"><thead><tr><th class="l"></th><th class="l">Starter finished below replacement, bench option above</th><th class="l">Starter above replacement, bench option below</th></tr></thead><tbody>
+          <tr><td class="l"><b>Started the lower projection</b> (by 2+ pts)</td><td class="l bad">Clear miss</td><td class="l good">Big-brain start</td></tr>
+          <tr><td class="l"><b>Projected within 2 pts</b></td><td class="l">Toss-up lost</td><td class="l">Toss-up won</td></tr>
+          <tr><td class="l"><b>Started the higher projection</b> (by 2+ pts)</td><td class="l muted">Defensible — never counted</td><td class="l muted">The expected call — not counted</td></tr>
+        </tbody></table></dd>
+        <dd>Headline numbers (points left, cost a win, rumbles) count clear misses; "+ Toss-ups" adds the lost toss-ups. Big-brain starts and the toss-up record are shown alongside. Each bench player is matched to one slot per week; for the good calls the comparison is the highest-projected eligible bench option.</dd>
+        <dt>Replacement level</dt>
+        <dd>The same per-season, per-position table as the Pickups page and the Trade Network (see that page's method section).</dd>
+        <dt>Limits</dt>
+        <dd>Sleeper doesn't record when a player sat on IR, so an IR-stashed player who returned and scored can show up as a bench option. Late scratches (a starter ruled out after his lineup locked) count as misses.</dd>
+      </dl>
+    </details>
+  </section>
+  <p class="meta" style="text-align:center">Data: Sleeper API · replacement levels shared with the Trade Network · refreshed hourly by GitHub Actions</p>
+</div>
+<div class="tooltip" id="tip" role="tooltip"></div>
+
+<script>
+const PALETTE_LIGHT = ['#157eed','#e81c52','#d44f14','#b07014','#967f15','#619115','#199950','#0d9298','#188db1','#7961f9','#b326f9','#d21cba','#5f7187','#8a6440'];
+const PALETTE_DARK  = ['#3b8ff4','#f64063','#e85d25','#c27e26','#a68e26','#6ea127','#2ca95e','#2ba1a7','#2b9dc2','#877bf4','#b959f4','#e630cc','#8597ac','#b08860'];
+const state = { season:'all', mode:'clear', sortKey:'lostWk', sortDir:'asc', listSortKey:'lost', listSortDir:'desc', focus:null, q:'', limit:100 };
+const TOUCH = matchMedia('(hover: none)').matches;
+let DATA = null, TIPS = [];
+
+function isDark(){ const t=document.documentElement.getAttribute('data-theme'); if(t) return t==='dark'; return matchMedia('(prefers-color-scheme: dark)').matches; }
+function colorOf(m){ const i = DATA.managers.indexOf(m); const p = isDark()?PALETTE_DARK:PALETTE_LIGHT; return i<0 ? 'var(--text-3)' : p[i % p.length]; }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (v, d=1) => v==null || !isFinite(v) ? '—' : Number(v).toLocaleString(undefined,{minimumFractionDigits:d, maximumFractionDigits:d});
+const sgn = (v, d=1) => { if(v==null || !isFinite(v)) return '—'; const r = +(+v).toFixed(d); return r===0 ? fmt(0, d) : (r>0?'+':'') + fmt(r, d); };
+const mgrHtml = m => `<span class="mgr"><span class="dot" style="background:${colorOf(m)}"></span>${esc(m)}</span>`;
+const sum = (arr, f) => arr.reduce((s,x)=>s+(f(x)||0),0);
+const inSeason = s => state.season==='all' || s===+state.season;
+const seasonMeta = s => DATA.seasons.find(x=>x.s===s);
+const seasonWeeks = s => { const m = seasonMeta(s); return Math.min(m.done, m.reg_end); };
+const slotName = s => ({SUPER_FLEX:'SF', REC_FLEX:'W/T flex', WRRB_FLEX:'W/R flex'})[s] || s;
+
+function tipAttr(fn){ TIPS.push(fn); return ` data-t="${TIPS.length-1}"`; }
+function tipTable(title, rows, footer, limit=14){
+  const shown = rows.slice(0, limit), more = rows.length - shown.length;
+  const body = shown.map(r => '<tr>' + r.map((c,i)=>`<td class="${i===r.length-1?'r':''}">${c}</td>`).join('') + '</tr>').join('');
+  return `<div class="tt-h">${title}</div>${rows.length?`<table>${body}</table>`:'<div class="o">Nothing here.</div>'}${more>0?`<div class="o">+${more} more</div>`:''}${footer?`<div class="tt-f">${footer}</div>`:''}`;
+}
+const projTxt = p => p.proj==null ? 'no projection' : `proj ${fmt(p.proj)}`;
+const tierTxt = d => d.tier==='clear' ? 'clear miss: the bench option was projected 2+ pts higher' : 'toss-up lost: projected within 2 pts';
+// one decision, both players and their results
+function missTip(d){
+  const o = d.out, i = d.inn;
+  const res = d.opp==null ? '' : `${d.my > d.opp ? 'Won' : d.my < d.opp ? 'Lost' : 'Tied'} ${fmt(d.my)}–${fmt(d.opp)} vs ${esc(d.oppm)}`;
+  return tipTable(`${esc(d.m)} · ${d.s} wk${d.w} · ${slotName(d.slot)} slot`, [
+    ['Started', `${esc(o.pl)} <span class="o">${o.pos}</span>`, `${fmt(o.pts)} pts`, `<span class="o">repl ${fmt(o.rp,2)}</span>`, sgn(o.pts - o.rp)],
+    ['Benched', `${esc(i.pl)} <span class="o">${i.pos}</span>`, `${fmt(i.pts)} pts`, `<span class="o">repl ${fmt(i.rp,2)}</span>`, sgn(i.pts - i.rp)],
+    ['Projected', esc(o.pl.split(' ').slice(-1)[0]), projTxt(o), esc(i.pl.split(' ').slice(-1)[0]), projTxt(i)],
+  ], `<b>${fmt(d.lost)} pts left on the bench</b>${o.played?'':' · starter did not play'} · ${tierTxt(d)}<br>${res}${d._flip?` · the right call${d._n>1?'s':''} (${fmt(d._wk)} pts) would have won it`:''}${d._rs?`<br>Rumbles: ${d._rs.before} → ${d._rs.after} with ${d._n>1?`all ${d._n} right calls`:'the right call'} (<b>+${d._rs.lost}</b>)${d._rs.passed.length?` · would have passed ${d._rs.passed.map(esc).join(', ')}`:''}`:''}`);
+}
+function callTip(c){
+  const o = c.out, i = c.inn;
+  const res = c.opp==null ? '' : `${c.my > c.opp ? 'Won' : c.my < c.opp ? 'Lost' : 'Tied'} ${fmt(c.my)}–${fmt(c.opp)} vs ${esc(c.oppm)}`;
+  return tipTable(`${esc(c.m)} · ${c.s} wk${c.w} · ${slotName(c.slot)} slot · ${c.tier==='brain'?'big-brain start':'toss-up won'}`, [
+    ['Started', `${esc(o.pl)} <span class="o">${o.pos}</span>`, `${fmt(o.pts)} pts`, projTxt(o), sgn(o.pts - o.rp)],
+    ['Benched', `${esc(i.pl)} <span class="o">${i.pos}</span>`, `${fmt(i.pts)} pts`, projTxt(i), sgn(i.pts - i.rp)],
+  ], `<b>+${fmt(c.gain)} pts</b> over the ${c.tier==='brain'?'higher-projected':'other'} option · ${c.tier==='brain'?`projected ${fmt((i.proj??0)-(o.proj??0))} pts lower`:'projected within 2 pts'}<br>${res}`);
+}
+function callListTip(title, C, footer){
+  return tipTable(title, C.slice().sort((a,b)=>b.gain-a.gain).map(c => [`${c.s} wk${c.w}`, `${esc(c.out.pl)} (${fmt(c.out.pts)}, proj ${fmt(c.out.proj)})`, `over ${esc(c.inn.pl)} (${fmt(c.inn.pts)}, proj ${fmt(c.inn.proj)})`, `+${fmt(c.gain)}`]), footer, 16);
+}
+function listTip(title, L, footer){
+  return tipTable(title, L.slice().sort((a,b)=>b.lost-a.lost).map(d => [`${d.s} wk${d.w}`, `${esc(d.out.pl)} (${fmt(d.out.pts)})`, `→ ${esc(d.inn.pl)} (${fmt(d.inn.pts)})`, fmt(d.lost)]), footer, 16);
+}
+
+/* Rumbles (league standings): 9 for a head-to-head win + 1 per team outscored that week */
+function weekRumbles(ws, m, pts){
+  const me = ws.find(x=>x[0]===m); const p = pts ?? me[1];
+  const opp = ws.find(x=>x[0]!==m && x[2]!=null && x[2]===me[2]);
+  return ws.filter(x=>x[0]!==m && p > x[1]).length + (opp && p > opp[1] ? DATA.rumble_bonus : 0);
+}
+function rumbleSwing(m, s, w, left){
+  const ws = (DATA.scores[s]||{})[w]; if(!ws || !ws.find(x=>x[0]===m)) return null;
+  const me = ws.find(x=>x[0]===m);
+  const before = weekRumbles(ws, m), after = weekRumbles(ws, m, me[1] + left);
+  const passed = ws.filter(x=>x[0]!==m && x[1] >= me[1] && x[1] < me[1] + left).map(x=>x[0]);
+  return {before, after, lost: after - before, passed, my: me[1], fixed: me[1] + left};
+}
+/* in the current mode, recompute week totals and whether they flipped a result */
+function misses(){
+  const L = DATA.lineup.filter(d => inSeason(d.s) && (state.mode==='all' || d.tier==='clear'));
+  const wk = {};
+  L.forEach(d => { const k = d.m+'|'+d.s+'|'+d.w; (wk[k] ||= []).push(d); });
+  Object.values(wk).forEach(arr => { const tot = sum(arr, d=>d.lost); const d0 = arr[0];
+    const flip = d0.opp!=null && d0.my < d0.opp && d0.opp <= d0.my + tot;
+    const rs = rumbleSwing(d0.m, d0.s, d0.w, tot);
+    arr.forEach(d => { d._wk = tot; d._flip = flip; d._n = arr.length; d._rs = rs; d._rl = rs ? rs.lost : 0; }); });
+  return L;
+}
+function weekGroups(L){ const g = new Map(); L.forEach(d => { const k=d.m+'|'+d.s+'|'+d.w; if(!g.has(k)) g.set(k, []); g.get(k).push(d); }); return [...g.values()]; }
+function rumbleTipRows(groups){ return groups.filter(arr=>arr[0]._rl>0).sort((a,b)=>b[0]._rl-a[0]._rl).map(arr => { const d=arr[0], r=d._rs;
+  return [`${d.s} wk${d.w}`, `${fmt(r.my)} → ${fmt(r.fixed)}`, `${r.before} → ${r.after}`, `+${r.lost}`]; }); }
+function flipWeeks(L){ const seen = new Map(); L.filter(d=>d._flip).forEach(d => { const k=d.m+'|'+d.s+'|'+d.w; if(!seen.has(k)) seen.set(k, L.filter(x=>x.m===d.m&&x.s===d.s&&x.w===d.w)); }); return [...seen.values()]; }
+
+function aggregate(){
+  const L = misses(), rows = {};
+  const get = m => rows[m] ||= {m, L:[], seasons:[]};
+  DATA.seasons.forEach(s => { if(inSeason(s.s)) s.teams.forEach(t => get(t.m).seasons.push(s.s)); });
+  L.forEach(d => get(d.m).L.push(d));
+  return Object.values(rows).filter(r=>r.seasons.length).map(r => finish(r)).map(r => ({...r,
+      brain: r.brainL.length, flipRec: r.flipW.length - r.flipL.length, flipTxt: `${r.flipW.length}–${r.flipL.length}`,
+      flipPct: (r.flipW.length+r.flipL.length) ? 100*r.flipW.length/(r.flipW.length+r.flipL.length) : null}));
+  function finish(r){
+    const weeks = sum(r.seasons, seasonWeeks), lost = sum(r.L, d=>d.lost);
+    const flips = flipWeeks(r.L);
+    const worst = r.L.slice().sort((a,b)=>b.lost-a.lost)[0];
+    return {...r, weeks, n:r.L.length, lost, lostWk: weeks ? lost/weeks : null, perWkN: weeks ? r.L.length/weeks : null,
+      flips: flips.length, flipList: flips,
+      rl: sum(weekGroups(r.L), arr=>arr[0]._rl), groups: weekGroups(r.L), flipL: DATA.lineup.filter(d=>d.m===r.m && inSeason(d.s) && d.tier==='flip'),
+      flipW: (DATA.calls||[]).filter(c=>c.m===r.m && inSeason(c.s) && c.tier==='flip'),
+      brainL: (DATA.calls||[]).filter(c=>c.m===r.m && inSeason(c.s) && c.tier==='brain'), worst: worst ? worst.lost : null, worstD: worst};
+  }
+}
+
+const BOARD_COLS = [
+  {k:'m', l:'Manager', cls:'l'},
+  {k:'lostWk', l:'Pts left / wk', d:2, h:'Points left on the bench per regular-season week.'},
+  {k:'lost', l:'Pts left', d:0, h:'Total points left on the bench.'},
+  {k:'n', l:'Misses', d:0, h:'Starter below replacement while an eligible bench player was above it.'},
+  {k:'flips', l:'Cost a win', d:0, h:'Losses the right calls would have turned into wins.'},
+  {k:'rl', l:'Rumbles lost', d:0, h:'Rumbles (9 for a win + 1 per team outscored) the right calls would have added, everyone else\'s score unchanged.'},
+  {k:'brain', l:'Big brain', d:0, h:'Started the lower-projected player (by 2+ pts) and he finished above replacement while the higher-projected bench option finished below it.'},
+  {k:'flipRec', l:'Toss-ups W–L', txt:'flipTxt', h:'Calls where the two options were projected within 2 pts of each other: won = your starter finished above replacement and the bench option below; lost = the reverse.'},
+  {k:'flipPct', l:'Toss-up %', d:1, h:'Share of toss-ups won: your starter finished above replacement and the bench option below, out of all toss-ups (won + lost).'},
+  {k:'worst', l:'Costliest', d:1, h:'Biggest single miss.'},
+];
+const BOARD_TIPS = {
+  lostWk: r => tipTable(`${esc(r.m)} · points left per week`, r.seasons.slice().sort().map(s => { const l = sum(r.L.filter(d=>d.s===s), d=>d.lost), w = seasonWeeks(s); return [`${s}${seasonMeta(s).finished?'':'*'}`, `${fmt(l,0)} pts over ${w} wks`, fmt(l/w,2)]; }), `${fmt(r.lost,0)} ÷ ${r.weeks} wks = ${fmt(r.lostWk,2)} per week`),
+  lost: r => listTip(`${esc(r.m)} · every miss`, r.L, `${fmt(r.lost)} pts total`),
+  n: r => listTip(`${esc(r.m)} · ${r.n} misses`, r.L, `${fmt(r.perWkN,2)} per week`),
+  flips: r => tipTable(`${esc(r.m)} · losses the right call would have won`, r.flipList.map(arr => { const d=arr[0]; return [`${d.s} wk${d.w}`, `lost ${fmt(d.my)}–${fmt(d.opp)} to ${esc(d.oppm)}`, arr.map(x=>`${esc(x.inn.pl)} for ${esc(x.out.pl)}`).join(', '), `+${fmt(d._wk)}`]; })),
+  rl: r => tipTable(`${esc(r.m)} · rumbles given away`, rumbleTipRows(r.groups), `score → with the right calls · rumbles → possible · <b>${r.rl} rumbles</b>`),
+  brain: r => callListTip(`${esc(r.m)} · big-brain starts`, r.brainL, 'started the lower projection and it paid off'),
+  flipPct: r => BOARD_TIPS.flipRec(r),
+  flipRec: r => callListTip(`${esc(r.m)} · toss-ups won`, r.flipW, '') + '<div style="height:8px"></div>' + listTip(`${esc(r.m)} · toss-ups lost`, r.flipL, `record ${r.flipTxt}`),
+  worst: r => r.worstD ? missTip(r.worstD) : '',
+};
+
+function sorter(key, dir){
+  return (a,b) => { let x=a[key], y=b[key];
+    if(x==null && y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    const r = typeof x==='string' ? x.localeCompare(y) : x - y; return dir==='asc' ? r : -r; };
+}
+function renderHead(table, cols, key, dir, onSort){
+  table.querySelector('thead').innerHTML = '<tr>' + cols.map(c => `<th class="${c.cls||''}" data-k="${c.k}" ${c.k===key?`data-dir="${dir}"`:''}${c.h?tipAttr(()=>esc(c.h)):''}>${c.l}</th>`).join('') + '</tr>';
+  table.querySelectorAll('th').forEach(th => th.addEventListener('click', () => onSort(th.dataset.k)));
+}
+
+function renderBoard(){
+  const rows = aggregate().sort(sorter(state.sortKey, state.sortDir));
+  const tbl = document.getElementById('board');
+  renderHead(tbl, BOARD_COLS, state.sortKey, state.sortDir, k => {
+    if(state.sortKey===k) state.sortDir = state.sortDir==='desc'?'asc':'desc'; else { state.sortKey=k; state.sortDir = k==='m'?'asc':'asc'; }
+    renderBoard();
+  });
+  tbl.querySelector('tbody').innerHTML = rows.map(r => `<tr data-m="${esc(r.m)}" class="${r.m===state.focus?'sel':''}">` + BOARD_COLS.map(c => {
+    if(c.k==='m') return `<td class="l">${mgrHtml(r.m)}</td>`;
+    const v = r[c.k];
+    const txt = c.txt ? r[c.txt] : (v==null?'—':fmt(v,c.d)+(c.k==='flipPct'?'%':''));
+    const cl = (c.k==='flips'||c.k==='rl')&&v ? 'bad' : (c.k==='brain'&&v ? 'good' : (c.k==='flipRec' ? (v>0?'good':v<0?'bad':'') : (c.k==='flipPct' ? (v>50?'good':v<50?'bad':'') : '')));
+    return `<td class="${cl}"${tipAttr(() => BOARD_TIPS[c.k](r))}>${txt}</td>`;
+  }).join('') + '</tr>').join('');
+  tbl.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', ev => {
+    if(TOUCH && ev.target.closest('td[data-t]')) return;
+    state.focus = state.focus===tr.dataset.m ? null : tr.dataset.m; state.limit = 100; renderAll();
+  }));
+  renderTiles(rows);
+}
+
+function renderTiles(rows){
+  const L = misses();
+  const clean = rows.filter(r=>r.weeks>=10).sort((a,b)=>a.lostWk-b.lostWk)[0];
+  const leaky = rows.filter(r=>r.weeks>=10).sort((a,b)=>b.lostWk-a.lostWk)[0];
+  const worst = L.slice().sort((a,b)=>b.lost-a.lost)[0];
+  const flips = rows.slice().sort((a,b)=>b.flips-a.flips)[0];
+  const t = [];
+  if(clean) t.push({lbl:'Cleanest lineups', num:`${fmt(clean.lostWk,2)} / wk`, who:mgrHtml(clean.m), tip:()=>BOARD_TIPS.lostWk(clean)});
+  if(leaky) t.push({lbl:'Most left on the bench', num:`${fmt(leaky.lostWk,2)} / wk`, who:mgrHtml(leaky.m), tip:()=>BOARD_TIPS.lostWk(leaky)});
+  const rl = rows.slice().sort((a,b)=>b.rl-a.rl)[0];
+  if(rl && rl.rl) t.push({lbl:'Most rumbles given away', num:`${rl.rl}`, who:mgrHtml(rl.m), tip:()=>BOARD_TIPS.rl(rl)});
+  if(flips && flips.flips) t.push({lbl:'Most wins given away', num:`${flips.flips}`, who:mgrHtml(flips.m), tip:()=>BOARD_TIPS.flips(flips)});
+  const brain = rows.slice().sort((a,b)=>b.brain-a.brain)[0];
+  if(brain && brain.brain) t.push({lbl:'Biggest brain', num:`${brain.brain} starts`, who:mgrHtml(brain.m), tip:()=>BOARD_TIPS.brain(brain)});
+  const fl = rows.filter(r=>r.flipW.length+r.flipL.length>=10).sort((a,b)=>(b.flipW.length/(b.flipW.length+b.flipL.length))-(a.flipW.length/(a.flipW.length+a.flipL.length)))[0];
+  if(fl) t.push({lbl:'Best toss-up caller', num:fl.flipTxt, who:mgrHtml(fl.m), tip:()=>BOARD_TIPS.flipRec(fl)});
+  if(worst) t.push({lbl:'Costliest benching', num:`${fmt(worst.lost)} pts`, who:`${esc(worst.inn.pl)} sat for ${esc(worst.out.pl)} · ${mgrHtml(worst.m)} <span class="muted">${worst.s}</span>`, tip:()=>missTip(worst)});
+  document.getElementById('tiles').innerHTML = t.map(x => `<div class="tile"${tipAttr(x.tip)}><div class="lbl">${x.lbl}</div><div class="num">${x.num}</div><div class="who">${x.who}</div></div>`).join('');
+}
+
+function renderHeat(){
+  const tbl = document.getElementById('heat');
+  const seasons = DATA.seasons.map(s=>s.s);
+  const all = DATA.lineup.filter(d => state.mode==='all' || d.tier==='clear');
+  const cell = {}; all.forEach(d => { (cell[d.m+'|'+d.s] ||= []).push(d); });
+  const played = new Set(); DATA.seasons.forEach(s => s.teams.forEach(t => played.add(t.m+'|'+s.s)));
+  const perWk = (list, s) => sum(list, d=>d.lost) / seasonWeeks(s);
+  const maxV = Math.max(1, ...[...played].map(k => perWk(cell[k]||[], +k.split('|')[1])));
+  const managers = aggregate().sort((a,b)=>a.lostWk-b.lostWk).map(r=>r.m);
+  tbl.querySelector('thead').innerHTML = '<tr><th>Manager</th>' + seasons.map(s => `<th class="${state.season!=='all'&&inSeason(s)?'cur':''}">${s}${seasonMeta(s).finished?'':'*'}</th>`).join('') + '</tr>';
+  tbl.querySelector('tbody').innerHTML = managers.map(m => `<tr class="${m===state.focus?'sel':''}"><td class="l">${mgrHtml(m)}</td>` + seasons.map(s => {
+    const k = m+'|'+s; if(!played.has(k)) return '<td class="c dim"></td>';
+    const list = cell[k] || [], v = perWk(list, s), a = Math.min(1, v/maxV);
+    const faded = state.season!=='all' && !inSeason(s);
+    return `<td class="c" style="background:rgba(var(--heatneg), ${(0.05 + a*0.75)*(faded?.35:1)});${a>.55&&!faded?'color:#fff':''}"${tipAttr(()=>listTip(`${esc(m)} · ${s} misses`, list, `${fmt(sum(list,d=>d.lost))} pts over ${seasonWeeks(s)} wks = ${fmt(v,2)} per week`))}>${fmt(v,1)}</td>`;
+  }).join('') + '</tr>').join('');
+}
+
+function renderToss(){
+  const tbl = document.getElementById('toss');
+  const seasons = DATA.seasons.map(s=>s.s);
+  const W = {}, Lo = {};
+  (DATA.calls||[]).filter(c=>c.tier==='flip').forEach(c => { (W[c.m+'|'+c.s] ||= []).push(c); });
+  DATA.lineup.filter(d=>d.tier==='flip').forEach(d => { (Lo[d.m+'|'+d.s] ||= []).push(d); });
+  const played = new Set(); DATA.seasons.forEach(s => s.teams.forEach(t => played.add(t.m+'|'+s.s)));
+  const managers = aggregate().sort((a,b)=>(b.flipPct??-1)-(a.flipPct??-1)).map(r=>r.m);
+  const bg = p => { const a = Math.min(1, Math.abs(p-50)/25); return p>=50 ? `rgba(var(--good-rgb),${0.08+a*0.55})` : `rgba(var(--heatneg),${0.08+a*0.6})`; };
+  tbl.querySelector('thead').innerHTML = '<tr><th>Manager</th>' + seasons.map(s => `<th>${s}${seasonMeta(s).finished?'':'*'}</th>`).join('') + '<th>All</th></tr>';
+  const cellHtml = (m, w, l, label) => {
+    const n = w.length + l.length;
+    if(!n) return '<td class="c dim">—</td>';
+    const pct = 100*w.length/n;
+    return `<td class="c" style="background:${bg(pct)}"${tipAttr(() => callListTip(`${esc(m)} · ${label} toss-ups won`, w, '') + '<div style="height:8px"></div>' + listTip(`${esc(m)} · ${label} toss-ups lost`, l, `${w.length}–${l.length} · ${fmt(pct,1)}%`))}>${w.length}–${l.length}<br><small>${fmt(pct,0)}%</small></td>`;
+  };
+  tbl.querySelector('tbody').innerHTML = managers.map(m => `<tr class="${m===state.focus?'sel':''}"><td class="l">${mgrHtml(m)}</td>` + seasons.map(s => {
+    const k = m+'|'+s; if(!played.has(k)) return '<td class="c dim"></td>';
+    return cellHtml(m, W[k]||[], Lo[k]||[], s);
+  }).join('') + cellHtml(m, seasons.flatMap(s=>W[m+'|'+s]||[]), seasons.flatMap(s=>Lo[m+'|'+s]||[]), 'all-time') + '</tr>').join('');
+}
+
+function li(main, ctx, value, sub, tip){
+  return `<li${tipAttr(tip)}><span class="main">${main}<span class="ctx">${ctx}</span></span><span class="val">${value}${sub?`<small>${sub}</small>`:''}</span></li>`;
+}
+// one losing week: every bad start and the better option, then the result
+function weekTip(arr){
+  const d = arr[0], r = d._rs;
+  const rows = arr.slice().sort((a,b)=>b.lost-a.lost).map(x => [slotName(x.slot),
+    `${esc(x.out.pl)} <span class="o">${fmt(x.out.pts)} (proj ${fmt(x.out.proj)})</span>`, `→ ${esc(x.inn.pl)} <span class="o">${fmt(x.inn.pts)} (proj ${fmt(x.inn.proj)})</span>`, `+${fmt(x.lost)}`, `<span class="o">${x.tier==='clear'?'clear':'toss-up'}</span>`]);
+  return tipTable(`${esc(d.m)} · ${d.s} wk${d.w} · ${arr.length} bad start${arr.length>1?'s':''}`, rows,
+    `${d.my>d.opp?'Won':d.my<d.opp?'Lost':'Tied'} ${fmt(d.my)}–${fmt(d.opp)} ${d.my>d.opp?'over':'to'} ${esc(d.oppm)} (by ${fmt(Math.abs(d.opp-d.my))}) · with the better options: <b>${fmt(d.my + d._wk)}</b>${d._flip?', a win':''}` +
+    (r ? `<br>Rumbles ${r.before} → ${r.after} (<b>+${r.lost}</b>)${r.passed.length?` · would have passed ${r.passed.map(esc).join(', ')}`:''}` : ''));
+}
+function renderCards(){
+  const L = misses().filter(d => !state.focus || d.m===state.focus);
+  const who = m => state.focus ? '' : `${esc(m)} · `;
+  const empty = '<li class="empty">Nothing in this view.</li>';
+  const flips = flipWeeks(L).sort((a,b) => (a[0].opp - a[0].my) - (b[0].opp - b[0].my));
+  const starts = n => `${n} bad start${n>1?'s':''}`;
+  document.getElementById('flipList').innerHTML = flips.map(arr => { const d = arr[0];
+    return li(`${state.focus ? '' : mgrHtml(d.m)+' '}<span class="wk">${d.s} wk${d.w}</span>`, `lost to ${esc(d.oppm)} by ${fmt(d.opp-d.my)}`,
+      `<span class="bad">${starts(arr.length)}</span>`, `+${fmt(d._wk)} pts on bench`, ()=>weekTip(arr)); }).join('') || empty;
+  document.getElementById('rumbleList').innerHTML = weekGroups(L).filter(arr=>arr[0]._rl>0).sort((a,b)=>b[0]._rl-a[0]._rl || b[0]._wk-a[0]._wk).map(arr => { const d = arr[0], r = d._rs;
+    return li(`${state.focus ? '' : mgrHtml(d.m)+' '}<span class="wk">${d.s} wk${d.w}</span>`, `${starts(arr.length)} · ${fmt(r.my)} → ${fmt(r.fixed)} pts`,
+      `<span class="bad">+${r.lost} rumbles</span>`, `${r.before} → ${r.after}`, ()=>weekTip(arr)); }).join('') || empty;
+  document.getElementById('costList').innerHTML = L.slice().sort((a,b)=>b.lost-a.lost)
+    .map(d => li(`${esc(d.inn.pl)} sat for ${esc(d.out.pl)}`, `${who(d.m)}${d.s} wk${d.w} · ${slotName(d.slot)}`, `<span class="bad">${fmt(d.lost)}</span>`, `${fmt(d.inn.pts)} vs ${fmt(d.out.pts)}`, ()=>missTip(d))).join('') || empty;
+  const B = (DATA.calls||[]).filter(c => c.tier==='brain' && inSeason(c.s) && (!state.focus || c.m===state.focus)).sort((a,b)=>b.gain-a.gain);
+  document.getElementById('brainList').innerHTML = B.map(c => li(`${esc(c.out.pl)} over ${esc(c.inn.pl)}`, `${who(c.m)}${c.s} wk${c.w} · ${slotName(c.slot)} · proj ${fmt(c.out.proj)} vs ${fmt(c.inn.proj)}`, `<span class="good">+${fmt(c.gain)}</span>`, `${fmt(c.out.pts)} vs ${fmt(c.inn.pts)}`, ()=>callTip(c))).join('') || empty;
+  document.getElementById('brainCnt').textContent = `· ${B.length}`;
+  const nRumble = weekGroups(L).filter(arr=>arr[0]._rl>0).length;
+  document.getElementById('flipCnt').textContent = `· ${flips.length}`;
+  document.getElementById('rumbleCnt').textContent = `· ${nRumble} weeks`;
+  document.getElementById('costCnt').textContent = `· ${L.length}`;
+  document.querySelectorAll('.list.scroll').forEach(el => el.scrollTop = 0);
+  document.getElementById('cardsTitle').textContent = state.focus ? `${state.focus}'s decisions that mattered` : 'Decisions that mattered';
+  document.getElementById('focus').innerHTML = state.focus ? `<span class="filter-pill">${mgrHtml(state.focus)}<button aria-label="Clear manager focus" id="clearFocus">✕</button></span>` : '<span class="note">click a manager in the leaderboard to focus</span>';
+  const cf = document.getElementById('clearFocus'); if(cf) cf.onclick = () => { state.focus = null; renderAll(); };
+}
+
+const LIST_COLS = [
+  {k:'s', l:'Season'}, {k:'w', l:'Wk'}, {k:'m', l:'Manager', cls:'l'}, {k:'slot', l:'Slot', cls:'l'},
+  {k:'outPl', l:'Started', cls:'l'}, {k:'outPts', l:'Pts'}, {k:'inPl', l:'Benched', cls:'l'}, {k:'inPts', l:'Pts'},
+  {k:'lost', l:'Left on bench'}, {k:'_rl', l:'Wk rumbles lost'}, {k:'result', l:'Result', cls:'l'},
+];
+function renderList(){
+  const q = state.q.toLowerCase();
+  const rows = misses().filter(d => (!state.focus || d.m===state.focus) && (!q || d.m.toLowerCase().includes(q) || d.out.pl.toLowerCase().includes(q) || d.inn.pl.toLowerCase().includes(q)))
+    .map(d => ({...d, outPl:d.out.pl, outPts:d.out.pts, inPl:d.inn.pl, inPts:d.inn.pts, result: d.opp==null?'':(d.my>d.opp?'W':'L')}));
+  rows.sort(sorter(state.listSortKey, state.listSortDir));
+  const tbl = document.getElementById('misses');
+  renderHead(tbl, LIST_COLS, state.listSortKey, state.listSortDir, k => {
+    if(state.listSortKey===k) state.listSortDir = state.listSortDir==='desc'?'asc':'desc'; else { state.listSortKey=k; state.listSortDir = ['m','slot','outPl','inPl','result'].includes(k)?'asc':'desc'; }
+    renderList();
+  });
+  tbl.querySelector('tbody').innerHTML = rows.slice(0, state.limit).map(d => {
+    const t = tipAttr(()=>missTip(d));
+    const res = d.opp==null ? '—' : `${d.my>d.opp?'W':'L'} ${fmt(d.my)}–${fmt(d.opp)}${d._flip?' <span class="tag chase">cost the win</span>':''}`;
+    return `<tr><td>${d.s}${seasonMeta(d.s).finished?'':'<span class="tag">live</span>'}</td><td>${d.w}</td><td class="l">${mgrHtml(d.m)}</td><td class="l muted">${slotName(d.slot)}</td>
+      <td class="l"${t}><span class="pos-pill">${esc(d.out.pos)}</span>${esc(d.out.pl)}</td><td class="bad"${t}>${fmt(d.out.pts)}</td>
+      <td class="l"${t}><span class="pos-pill">${esc(d.inn.pos)}</span>${esc(d.inn.pl)}${d.tier==='flip'?' <span class="tag">toss-up</span>':''}</td><td class="good"${t}>${fmt(d.inn.pts)}</td>
+      <td${t}>${fmt(d.lost)}</td><td class="${d._rl?'bad':'muted'}"${t}>${d._rl?'+'+d._rl:'—'}</td><td class="l"${t}>${res}</td></tr>`;
+  }).join('') || `<tr><td class="l empty" colspan="${LIST_COLS.length}">No misses match.</td></tr>`;
+  const more = document.getElementById('moreBtn');
+  more.hidden = rows.length <= state.limit;
+  more.textContent = `Show more (${rows.length - state.limit} left)`;
+}
+
+function renderAll(){
+  TIPS = [];
+  document.getElementById('hint').textContent = state.mode==='clear' ? 'Clear misses only: the bench option was projected 2+ pts higher than the starter' : 'Clear misses plus lost toss-ups (the two options projected within 2 pts)';
+  renderBoard(); renderHeat(); renderToss(); renderCards(); renderList();
+}
+
+/* ---------- tooltip plumbing ---------- */
+const tip = document.getElementById('tip');
+let tipOwner = null;
+function showTip(ev, html){
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const w = tip.offsetWidth, h = tip.offsetHeight, pad = 14;
+  let x = ev.clientX + pad, y = ev.clientY + pad;
+  if(x + w > innerWidth - 6) x = Math.max(6, ev.clientX - w - pad);
+  if(y + h > innerHeight - 6) y = Math.max(6, ev.clientY - h - pad);
+  if(y < 6) y = 6;
+  tip.style.left = x+'px'; tip.style.top = y+'px';
+}
+function hideTip(){ tip.style.opacity = 0; tipOwner = null; }
+document.addEventListener('mousemove', ev => {
+  if(TOUCH) return;
+  const el = ev.target.closest('[data-t]');
+  if(!el){ if(tipOwner) hideTip(); return; }
+  const fn = TIPS[+el.dataset.t]; if(!fn) return;
+  if(tipOwner !== el){ tipOwner = el; tip.innerHTML = fn(); }
+  showTip(ev, tip.innerHTML);
+});
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-t]');
+  if(TOUCH && el && TIPS[+el.dataset.t]){
+    if(tipOwner === el){ hideTip(); return; }
+    tipOwner = el; showTip(ev, TIPS[+el.dataset.t]()); return;
+  }
+  if(TOUCH) hideTip();
+});
+addEventListener('scroll', () => { if(TOUCH) hideTip(); }, {passive:true});
+
+fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
+  DATA = d;
+  const gen = new Date(d.generated);
+  document.getElementById('updated').textContent = `Updated ${gen.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · NFL ${d.nfl.season} wk ${d.nfl.week}`;
+  const chips = document.getElementById('seasonChips');
+  chips.innerHTML = ['all', ...d.seasons.map(s=>s.s)].map(o => { const s = d.seasons.find(x=>x.s===o); return `<button class="chip" data-v="${o}" aria-pressed="${o==='all'}">${o==='all'?'All seasons':o}${s&&!s.finished?'*':''}</button>`; }).join('');
+  chips.querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    state.season = c.dataset.v; state.limit = 100;
+    chips.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x===c));
+    renderAll();
+  });
+  document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => {
+    state.mode = b.dataset.v; state.limit = 100;
+    document.querySelectorAll('#modeSeg button').forEach(x => x.setAttribute('aria-pressed', x===b));
+    renderAll();
+  });
+  document.getElementById('q').oninput = e => { state.q = e.target.value; state.limit = 100; renderList(); };
+  document.getElementById('moreBtn').onclick = () => { state.limit += 200; renderList(); };
+  const inprog = d.seasons.find(s=>!s.finished);
+  if(inprog) document.getElementById('boardNote').textContent = `Lower is better. * ${inprog.s} is in progress (through week ${inprog.done}). Hover any number for the decisions behind it; click a manager to focus.`;
+  renderAll();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', renderAll);
+}).catch(err => { document.getElementById('updated').textContent = 'Could not load data.json — ' + err; });
+</script>
+</body>
+</html>

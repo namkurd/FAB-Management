@@ -1,36 +1,49 @@
 # FAB Management
 
-Who in the DTF Club is best at the waiver wire? This ranks every manager on FAAB waiver claims and free-agent pickups since 2021, scored with the league's own points.
+Who in the DTF Club is best at the waiver wire? This ranks every manager on FAB waiver claims and free-agent pickups since 2021, scored with the league's own points.
 
 **Live site:** https://namkurd.github.io/FAB-Management/ (GitHub Pages, `main` branch, root)
 
 ## How it works
 
-- `update_waivers.py` walks the Sleeper league chain from the current season back to 2021, pulls every transaction, matchup and weekly stat line, and writes `data.json`. Its only dependency is `requests`.
-- `index.html` is a single static page (D3 from cdnjs) that loads `data.json?_=<timestamp>` and does all filtering in the browser.
+- `update_waivers.py` walks the Sleeper league chain from the current season back to 2021, pulls every transaction, completed matchup and weekly stat line, and writes `data.json` (with week-by-week detail behind every number). Its only dependency is `requests`.
+- `index.html` is a single static page with no libraries that loads `data.json?_=<timestamp>` and does all filtering in the browser.
 - `.github/workflows/update.yml` reruns the script every hour and commits `data.json` only when the data actually changed. You can also trigger it from the Actions tab with **Run workflow**.
 
 Only completed weeks are read or cached. Sleeper pre-generates future matchups with stale rosters and zero points, so the current week is never used.
 
 ## Metrics
 
+Everything is measured in **points above replacement (PAR)**, using the exact definition and the same replacement tables as the Trade Network (`namkurd/SleeperTradeNodes`). See `par.py`.
+
+Filters: season, **positions** (FLEX = RB/WR/TE, the default · Streamers = QB/K/DEF · All), **PAR basis** (Started / Rostered) and pickup type (FAB claims / free agents). Hovering any number shows the pickups, bids or weeks behind it.
+
 | Metric | Definition |
 |---|---|
-| Started pts (headline) | Points the added player scored in the manager's starting lineup, from the add week until he left the roster, regular season only |
-| Rostered pts | Same window, counting every rostered week (started or benched) |
-| Playoff pts | Started points after the regular season, shown separately |
-| Net | Started pts minus the regret of the player dropped in the same move |
-| Regret | What a dropped player later scored in *other* managers' starting lineups that regular season |
-| Hit rate | Share of adds with ≥ 30 started points |
-| Pts / $ | Points from FAAB claims ÷ FAAB dollars spent |
-| Claim win % | Completed FAAB claims ÷ all submitted claims; failures are split into *outbid* and *roster* (roster would be too full) |
-| Early / Chase | Timing flags based on league-scoring points per game in the 3 weeks before and the 4 weeks after the add |
+| PAR (headline) | Started: Σ over regular-season weeks in the starting lineup of (points − replacement PPG). Rostered: Σ over rostered weeks he played |
+| PAR / wk | PAR ÷ regular-season weeks played (comparable across seasons, including the partial one) |
+| Difference-makers | Pickups worth 25+ started PAR |
+| Early calls | PAR/G ≤ 0 in the 3 weeks before the pickup counted, ≥ +3 in the 4 weeks after, and held ≥ 2 of those weeks |
+| Chases | One spike game right before the pickup (≥ +8 PAR), the 3 weeks before that ≤ 0 PAR/G (or no games), ≤ 0 PAR/G in the 4 weeks after |
+| FAB spent / PAR per $ | Sum of winning bids; PAR from FAB claims ÷ dollars spent |
+| Regret | Started PAR that dropped players produced in *other* managers' lineups that season (floored at 0 per player) |
+| Net | PAR − regret |
 
-League scoring for players who were not on a roster (used for timing and post-drop production) comes from Sleeper's weekly stats endpoint multiplied by the league's `scoring_settings`. This matches Sleeper's own `players_points` to the cent.
+**Replacement level** (per season × position): cutoff rank = average number of that position actually started per week + bench depth (½ per team at QB/TE/K/DEF, 1 at RB/WR); replacement PPG = PPG of the player at that rank (league scoring, all NFL players, ≥ 40% of games). Tables are read from the Trade Network's published `data.json`; they're rebuilt locally with the same code only if that's unreachable or behind.
+
+Page sections: leaderboard → PAR by season (manager × season heatmap) → transactions that mattered (best pickups, early calls, biggest regrets, worst FAB spends; click a manager to focus) → every pickup → method with the replacement table.
+
+## Sit / start (`lineup.html`)
+
+A **miss** = in a completed regular-season week, a starter scored below replacement for his position while a bench player eligible for that same slot scored above replacement for his (and more than the starter). Each bench player fixes at most one slot per week, biggest hole first, so depth on its own is never penalised. Reported per manager: points left on the bench (total and per week), misses, **cost a win** (losses where that week's misses exceed the margin) **rumbles lost** (the league's standings: 9 for a win + 1 per team outscored; re-scored with that week's right calls, everyone else unchanged; weekly scores reproduce SleeperAuction's official Rumbles totals exactly) — counting only starts that weren't defensible going in. Each candidate is checked against Sleeper's pre-game projections (scored with league settings): calls are sorted into a 2 × 2 — started the lower projection by 2+ pts and lost the swap = **clear miss** (the headline), won it = **big-brain start**; projections within 2 pts = **toss-up** won / lost (lost flips join the headline with the "+ Toss-ups" toggle); started the higher projection by 2+ pts = defensible / expected, never counted. Winning calls mirror the miss rule: starter above replacement, the bench option below. Every number has a tooltip with both players, their points vs replacement, their projections and the matchup result.
+
+## For the yearly report card
+
+`data.json` → `summary[season][manager][flex|stream|all]` holds the FAB component per manager-season (`par`, `parWk`, `regret`, `net`, `fab`, `hits`, `early`, `chase`, `adds`, `weeks`) plus `lineup` / `lineupWithFlips` (`mistakes`, `lost`, `lostWk`, `winsLost`, `rumblesLost`) and `calls` (`bigBrain`, `bigBrainPts`, `flipsWon`, `flipsLost`), keyed by person and in PAR, ready to sit next to draft, trade, injury-luck and matchup-luck components.
 
 ## Data checks
 
-The script prints a FAAB integrity check for each season: winning bids minus FAAB traded away should equal Sleeper's `waiver_budget_used`. Every season reconciles except three small leftovers (Ben and Tommy in 2021, Ben in 2024), which are probably commissioner adjustments.
+The script prints a FAB integrity check for each season: winning bids minus FAB traded away should equal Sleeper's `waiver_budget_used`. Every season reconciles except three small leftovers (Ben and Tommy in 2021, Ben in 2024), which are probably commissioner adjustments.
 
 In 2023, roster 9 has no `owner_id` because the owner later left the league. The script inherits that slot's previous-season owner, which is Tommy, and the SleeperAuction standings confirm it.
 

@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FAB Management</title>
-<meta name="description" content="Who in the DTF Club is best at waiver, FAAB and free-agent pickups — scored with the league's own points.">
+<meta name="description" content="Who in the DTF Club is best at the waiver wire: every FAB claim and free-agent add since 2021, scored with the league's own points.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <style>
   :root{
     --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1;
     --text:#131B24; --text-2:#4B5867; --text-3:#7C8896;
     --border:#D7DEE4; --border-soft:#E4E9ED;
-    --accent:#157EED; --good:#1A8F4E; --bad:#C4314B; --warn:#B5750E;
+    --good:#1A7F45; --bad:#C4314B;
+    --heat:21,126,237; --heatneg:196,49,75;
     --shadow:0 1px 2px rgba(19,27,36,.06), 0 6px 20px rgba(19,27,36,.06);
     --font-display:'IBM Plex Sans Condensed',system-ui,sans-serif;
     --font-body:'IBM Plex Sans',system-ui,sans-serif;
@@ -23,7 +23,7 @@
       --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
       --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
       --border:#26323F; --border-soft:#202B36;
-      --accent:#4E8DE0; --good:#3FBF78; --bad:#F06A80; --warn:#D9A233;
+      --good:#3FBF78; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
     }
   }
@@ -31,7 +31,7 @@
     --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
     --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
     --border:#26323F; --border-soft:#202B36;
-    --accent:#4E8DE0; --good:#3FBF78; --bad:#F06A80; --warn:#D9A233;
+    --good:#3FBF78; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box;}
@@ -41,6 +41,7 @@
   header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 24px;}
   h1{font-family:var(--font-display); font-weight:700; font-size:28px; margin:0 0 2px;}
   h2{font-family:var(--font-display); font-weight:700; font-size:18px; margin:0;}
+  h3{font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3); margin:0 0 8px; font-weight:600;}
   .sub{margin:0; color:var(--text-2); font-size:13.5px; max-width:62ch;}
   .meta{font-family:var(--font-mono); font-size:11.5px; color:var(--text-3);}
   .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
@@ -53,115 +54,147 @@
     font-weight:600; font-size:13px; padding:7px 12px; cursor:pointer;}
   .segmented button + button{border-left:1px solid var(--border);}
   .segmented button[aria-pressed="true"]{background:var(--surface-2); color:var(--text);}
+  .hint{font-size:12px; color:var(--text-3);}
   .panel{background:var(--surface); border:1px solid var(--border-soft); border-radius:14px; box-shadow:var(--shadow); padding:14px 16px;}
   .panel-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px 16px; margin-bottom:10px;}
   .note{font-size:12px; color:var(--text-3);}
-  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1px; background:var(--border-soft); border-radius:12px; overflow:hidden; border:1px solid var(--border-soft);}
-  .tile{background:var(--surface); padding:12px 14px;}
-  .tile .num{font-family:var(--font-mono); font-weight:600; font-size:19px; font-variant-numeric:tabular-nums;}
-  .tile .lbl{font-size:11.5px; color:var(--text-3); margin-top:2px;}
-  .tile .who{font-size:12.5px; color:var(--text-2); margin-top:4px;}
+  .tiles{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1px; background:var(--border-soft); border-radius:12px; overflow:hidden; border:1px solid var(--border-soft);}
+  .tile{background:var(--surface); padding:12px 14px; cursor:default;}
+  .tile .lbl{font-size:11.5px; color:var(--text-3); text-transform:uppercase; letter-spacing:.4px; font-weight:600;}
+  .tile .num{font-family:var(--font-mono); font-weight:600; font-size:20px; font-variant-numeric:tabular-nums; margin-top:4px;}
+  .tile .who{font-size:13px; color:var(--text-2); margin-top:3px;}
   .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
   table{width:100%; border-collapse:collapse; font-size:13px;}
   th,td{padding:7px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border-soft);}
   th:first-child,td:first-child,th.l,td.l{text-align:left;}
-  th{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-3); font-weight:600; cursor:pointer; user-select:none; position:sticky; top:0; background:var(--surface);}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-3); font-weight:600; cursor:pointer; user-select:none; background:var(--surface);}
   th[data-dir="asc"]::after{content:" ▲"; font-size:9px;}
   th[data-dir="desc"]::after{content:" ▼"; font-size:9px;}
   td{font-variant-numeric:tabular-nums; font-family:var(--font-mono); font-size:12.5px;}
   td.l{font-family:var(--font-body); font-size:13px;}
-  tbody tr{cursor:default;}
+  td[data-t]{cursor:help;}
+  td[data-t]:hover{text-decoration:underline dotted var(--text-3); text-underline-offset:3px;}
   #board tbody tr{cursor:pointer;}
   tbody tr:hover{background:var(--surface-2);}
-  tr.sel{background:var(--surface-2);}
+  tr.sel td{background:var(--surface-2);}
   .mgr{display:inline-flex; align-items:center; gap:7px; font-weight:600;}
   .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
-  .pos{font-family:var(--font-mono); font-size:11px; color:var(--text-3); margin-right:4px;}
   .pos-pill{display:inline-block; min-width:30px; font-family:var(--font-mono); font-size:10.5px; color:var(--text-2); background:var(--surface-2); border-radius:4px; padding:1px 4px; text-align:center; margin-right:6px;}
   .good{color:var(--good);} .bad{color:var(--bad);} .muted{color:var(--text-3);}
   .tag{display:inline-block; font-family:var(--font-mono); font-size:10px; padding:1px 5px; border-radius:4px; border:1px solid var(--border); color:var(--text-2); margin-left:4px;}
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
-  @media (max-width:860px){ .grid2{grid-template-columns:1fr;} }
-  #scatter{display:block; width:100%; height:360px;}
-  .axis text{fill:var(--text-3); font-family:var(--font-mono); font-size:10.5px;}
-  .axis path,.axis line{stroke:var(--border);}
-  .gridline line{stroke:var(--border-soft);}
+  #board td:first-child,#board th:first-child,.heat td:first-child,.heat th:first-child{position:sticky; left:0; z-index:1; background:var(--surface);}
+  #board tr.sel td:first-child,.heat tr.sel td:first-child{background:var(--surface-2);}
+  /* heatmap */
+  .heat td.c{font-family:var(--font-mono); text-align:center; min-width:62px; border-bottom:2px solid var(--surface); border-right:2px solid var(--surface); border-radius:4px; color:var(--text);}
+  .heat td.c.dim{color:var(--text-3);}
+  .heat th{text-align:center; cursor:default;}
+  .heat th:first-child{text-align:left;}
+  .heat th.cur{color:var(--text);}
+  .heat td.tot{font-weight:600;}
+  /* transaction cards */
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:760px){ .cards{grid-template-columns:1fr;} }
+  .cards > *{min-width:0;}
+  .list{list-style:none; margin:0; padding:0; font-size:13px;}
+  .list li{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border-soft); cursor:help;}
+  .list li:last-child{border-bottom:none;}
+  .list .main{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .list .ctx{display:block; color:var(--text-3); font-size:11.5px; font-family:var(--font-mono); margin-top:1px;}
+  .list .val{font-family:var(--font-mono); font-size:12.5px; white-space:nowrap; text-align:right;}
+  .list .val small{display:block; color:var(--text-3); font-size:11px;}
+  .filter-pill{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; padding:4px 8px 4px 10px; border-radius:999px; background:var(--surface-2); color:var(--text);}
+  .filter-pill button{appearance:none; border:none; background:transparent; color:var(--text-2); cursor:pointer; font-size:14px; line-height:1; padding:0 2px;}
   .toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
-  input[type=search],select{font:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); min-width:0;}
-  input[type=search]{width:220px; max-width:100%;}
-  .tooltip{position:fixed; pointer-events:none; z-index:50; background:var(--text); color:var(--bg); font-size:12px; line-height:1.45;
-    padding:8px 10px; border-radius:8px; max-width:300px; opacity:0; transition:opacity .1s; box-shadow:var(--shadow);}
-  .tooltip b{font-weight:600;}
-  .drill-list{list-style:none; margin:0; padding:0; font-size:13px;}
-  .drill-list li{display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid var(--border-soft);}
-  .drill-list li span:last-child{font-family:var(--font-mono); font-size:12px; white-space:nowrap;}
-  .drill-list .ctx{color:var(--text-3); font-size:11.5px; font-family:var(--font-mono);}
-  .drill-cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px;}
-  h3{font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3); margin:0 0 6px; font-weight:600;}
+  input[type=search]{font:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); width:220px; max-width:100%;}
+  .tooltip{position:fixed; pointer-events:none; z-index:50; background:var(--text); color:var(--bg); font-size:12px; line-height:1.4;
+    padding:9px 11px; border-radius:8px; max-width:min(600px, calc(100vw - 12px)); opacity:0; transition:opacity .1s; box-shadow:var(--shadow);}
+  .tooltip .tt-h{font-weight:600; margin-bottom:5px;}
+  .tooltip table{font-size:11.5px; width:auto; border-collapse:collapse;}
+  .tooltip td{padding:1px 0; border:none; font-family:var(--font-mono); font-size:11.5px; color:inherit; white-space:nowrap; text-align:left;}
+  .tooltip td + td{padding-left:12px;}
+  .tooltip td.r{text-align:right;}
+  .tooltip .tt-f{margin-top:6px; padding-top:5px; border-top:1px solid color-mix(in srgb, var(--bg) 30%, transparent); opacity:.85;}
+  .tooltip .o{opacity:.6;}
   details summary{cursor:pointer; font-weight:600; font-family:var(--font-display); font-size:16px;}
   .method{font-size:13px; color:var(--text-2); line-height:1.55;}
   .method dt{font-weight:600; color:var(--text); margin-top:8px;}
   .method dd{margin:2px 0 0;}
-  .empty{color:var(--text-3); font-size:13px; padding:10px 0;}
+  .empty{color:var(--text-3); font-size:13px; padding:10px 0; cursor:default !important;}
   .more{appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2); font:inherit; font-size:12.5px; border-radius:8px; padding:6px 12px; cursor:pointer; margin-top:8px;}
+  .heat td.c.neg{color:var(--text);}
+  .par-tbl td{text-align:right;}
+  .tag.early{color:var(--good); border-color:color-mix(in srgb,var(--good) 45%,transparent);}
+  .tag.chase{color:var(--bad); border-color:color-mix(in srgb,var(--bad) 45%,transparent);}
+  .pos{color:var(--good);} 
+  .tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:-4px;}
+  .tabs a{font-family:var(--font-display); font-weight:600; font-size:14px; color:var(--text-3); text-decoration:none; padding:6px 12px; border-bottom:2px solid transparent; margin-bottom:-1px;}
+  .tabs a[aria-current="page"]{color:var(--text); border-bottom-color:var(--text);}
+  .tabs a:hover{color:var(--text);}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <nav class="tabs"><a href="index.html" aria-current="page">Pickups</a><a href="lineup.html">Sit / start</a></nav>
   <header>
     <div>
       <h1>FAB Management</h1>
-      <p class="sub">Who in the DTF Club is actually good at the waiver wire? Every FAAB claim and free-agent add since 2021, scored with the league's own points.</p>
+      <p class="sub">Who in the DTF Club actually wins the waiver wire? Every FAB claim and free-agent add since 2021, measured in <b>points above replacement</b> — the same yardstick as the Trade Network.</p>
     </div>
     <div class="meta" id="updated">Loading…</div>
   </header>
 
   <div class="controls">
     <div class="chips" id="seasonChips"></div>
-    <div class="segmented" id="typeSeg">
+    <div class="segmented" id="groupSeg" aria-label="Positions">
+      <button data-v="flex" aria-pressed="true">FLEX</button>
+      <button data-v="stream" aria-pressed="false">Streamers</button>
+      <button data-v="all" aria-pressed="false">All</button>
+    </div>
+    <div class="segmented" id="basisSeg" aria-label="PAR basis">
+      <button data-v="st" aria-pressed="true">Started</button>
+      <button data-v="ro" aria-pressed="false">Rostered</button>
+    </div>
+    <div class="segmented" id="typeSeg" aria-label="Pickup type">
       <button data-v="all" aria-pressed="true">All adds</button>
-      <button data-v="W" aria-pressed="false">FAAB waivers</button>
+      <button data-v="W" aria-pressed="false">FAB claims</button>
       <button data-v="F" aria-pressed="false">Free agents</button>
     </div>
-    <div class="segmented" id="basisSeg">
-      <button data-v="st" aria-pressed="true">Started pts</button>
-      <button data-v="ro" aria-pressed="false">Rostered pts</button>
-    </div>
   </div>
+  <div class="hint" id="hint"></div>
 
   <div class="tiles" id="tiles"></div>
 
   <section class="panel">
     <div class="panel-head">
       <h2>Manager leaderboard</h2>
-      <span class="note" id="boardNote">Click a manager for their best and worst moves. Hover headers for definitions.</span>
+      <span class="note" id="boardNote">Hover any number to see what's in it. Click a manager to focus the page on them.</span>
     </div>
     <div class="table-wrap"><table id="board"><thead></thead><tbody></tbody></table></div>
   </section>
 
-  <section class="panel" id="drill" hidden>
-    <div class="panel-head"><h2 id="drillTitle"></h2><span class="note" id="drillNote"></span></div>
-    <div class="drill-cols" id="drillBody"></div>
+  <section class="panel">
+    <div class="panel-head">
+      <h2>PAR from the wire, by season</h2>
+      <span class="note"><span style="color:rgb(var(--heat))">■</span> above replacement · <span style="color:rgb(var(--heatneg))">■</span> below · hover for the pickups</span>
+    </div>
+    <div class="table-wrap"><table class="heat" id="heat"><thead></thead><tbody></tbody></table></div>
   </section>
 
-  <div class="grid2">
-    <section class="panel">
-      <div class="panel-head"><h2>FAAB spent vs. production</h2><span class="note">one dot per manager-season</span></div>
-      <svg id="scatter" role="img" aria-label="Scatter plot of FAAB dollars spent versus points from waiver claims"></svg>
-    </section>
-    <section class="panel">
-      <div class="panel-head"><h2>Biggest regrets</h2><span class="note">dropped players who were then started by someone else</span></div>
-      <ul class="drill-list" id="regrets"></ul>
-    </section>
+  <div class="panel-head" style="margin:4px 0 -4px">
+    <h2 id="cardsTitle">Transactions that mattered</h2>
+    <span id="focus"></span>
+  </div>
+  <div class="cards">
+    <section class="panel"><h3>Best pickups</h3><ul class="list" id="bestList"></ul></section>
+    <section class="panel"><h3>Early calls</h3><ul class="list" id="earlyList"></ul></section>
+    <section class="panel"><h3>Biggest regrets</h3><ul class="list" id="regretList"></ul></section>
+    <section class="panel"><h3>Worst FAB spends</h3><ul class="list" id="bustList"></ul></section>
   </div>
 
   <section class="panel">
     <div class="panel-head">
       <h2>Every pickup</h2>
-      <div class="toolbar">
-        <input type="search" id="q" placeholder="Search player or manager">
-        <select id="posSel"><option value="">All positions</option></select>
-      </div>
+      <div class="toolbar"><input type="search" id="q" placeholder="Search player or manager"></div>
     </div>
     <div class="table-wrap"><table id="adds"><thead></thead><tbody></tbody></table></div>
     <button class="more" id="moreBtn" hidden>Show more</button>
@@ -171,276 +204,317 @@
     <details>
       <summary>How this is scored</summary>
       <dl class="method">
-        <dt>Started points (headline)</dt>
-        <dd>Points the added player scored in that manager's starting lineup, regular season only, from the week of the add until he left the roster. Benched weeks count 0. Points come straight from Sleeper's matchup data, so they use the league's exact scoring.</dd>
-        <dt>Rostered points</dt>
-        <dd>Same window, counting every week he was on the roster whether started or not — pure talent-spotting. The add week only counts if the move happened before that week's first kickoff (or the player was started).</dd>
-        <dt>Regret / Net</dt>
-        <dd>Regret is what a dropped player went on to score <em>in other managers' starting lineups</em> for the rest of that regular season. Net = started points of the add minus regret of the player dropped in the same transaction.</dd>
-        <dt>Hit rate</dt>
-        <dd>Share of completed adds that produced at least <span id="hitT">30</span> started points.</dd>
-        <dt>Claim success</dt>
-        <dd>Completed FAAB claims ÷ (completed + failed). "Outbid" failures = another team won the player; "Roster" failures = the claim would have left too many players on the roster.</dd>
-        <dt>Early / Chase</dt>
-        <dd>Timing uses league-scoring points per game for every NFL player (Sleeper weekly stats × league scoring settings). <b>Early</b>: low output in the 3 weeks before the add, startable output in the 4 weeks after (threshold 12 PPG; 18 for QB, 10 for K/DEF). <b>Chase</b>: added after a big stretch, then fell off.</dd>
-        <dt>Seasons</dt>
-        <dd>Regular season ends at week 15 through 2025 and week 14 from 2026. Playoff started points are tracked separately and not in the headline. The in-progress season only includes completed weeks; "All" totals include it, so compare per-season and per-add columns when mixing in a partial year.</dd>
+        <dt>Points above replacement (PAR)</dt>
+        <dd>Same definition as the Trade Network. <b>Started PAR</b> = for every regular-season week the pickup was in your starting lineup, his points minus a replacement-level player's points per game: <b>PAR = pts − replacement PPG × games started</b>. Starting a dud or an injured player counts against you. <b>Rostered PAR</b> counts every week he was on your roster and played, started or not (bye and injury weeks skipped) — talent-spotting rather than usage.</dd>
+        <dt>Replacement level</dt>
+        <dd>Per season and position: the points per game of the player ranked at a cutoff. Cutoff = how many of that position managers actually started each week (from real lineups, so flex and superflex count) + bench depth (½ per team at QB, TE, K, DEF; 1 per team at RB, WR). Every NFL player is ranked by PPG in this league's scoring over completed regular-season weeks (≥ 40% of games played). The tables are read straight from the Trade Network so both tools use identical numbers; the live season's cutoffs move as weeks are played.</dd>
+        <dd><div class="table-wrap"><table class="par-tbl" id="replTable"></table></div><span class="note">Each cell: cutoff rank · replacement PPG. Hover for the player at the cutoff.</span></dd>
+        <dt>PAR / week</dt>
+        <dd>Pickup PAR ÷ regular-season weeks played: how many points a week the wire added to your lineup beyond a freely available player. Fair across seasons, including the partial one.</dd>
+        <dt>Early calls and chases</dt>
+        <dd>Timing compares the player's PAR per game in the 3 weeks <i>before</i> the pickup counted with the 4 weeks after (league scoring, every NFL player). <b>Early</b>: replacement-level or worse before (≤ 0), startable after (≥ +<span class="edge">3</span> PAR/G), and you held him for at least 2 of those weeks. <b>Chase</b>: one spike game right before the pickup (≥ +<span class="spike">8</span> above replacement), nothing sustained before it (the 3 weeks prior at or below replacement, or no games), and at or below replacement in the 4 weeks after.</dd>
+        <dt>Difference-makers</dt>
+        <dd>Pickups worth <span id="hitT">25</span>+ started PAR.</dd>
+        <dt>Regret and Net</dt>
+        <dd><b>Regret</b> = the started PAR players you dropped went on to produce in other managers' lineups that season (players who were started elsewhere below replacement count as 0). <b>Net</b> = pickup PAR − regret.</dd>
+        <dt>PAR per FAB $</dt>
+        <dd>PAR from FAB claims ÷ FAB dollars spent. $0 claims add PAR but no dollars.</dd>
         <dt>Limits</dt>
-        <dd>Sleeper only exposes winning bids, so overpay vs. the market can't be measured. Points are hindsight value, not what a pickup looked like at the time.</dd>
+        <dd>Sleeper only shows winning bids, so there's no read on overpaying vs. the market. PAR is hindsight value. Playoff weeks aren't counted.</dd>
       </dl>
     </details>
   </section>
-  <p class="meta" style="text-align:center">Data: Sleeper API · nflverse schedule · refreshed hourly by GitHub Actions</p>
+  <p class="meta" style="text-align:center">Data: Sleeper API · replacement levels shared with the Trade Network · refreshed hourly by GitHub Actions</p>
 </div>
-<div class="tooltip" id="tip"></div>
+<div class="tooltip" id="tip" role="tooltip"></div>
 
 <script>
 const PALETTE_LIGHT = ['#157eed','#e81c52','#d44f14','#b07014','#967f15','#619115','#199950','#0d9298','#188db1','#7961f9','#b326f9','#d21cba','#5f7187','#8a6440'];
 const PALETTE_DARK  = ['#3b8ff4','#f64063','#e85d25','#c27e26','#a68e26','#6ea127','#2ca95e','#2ba1a7','#2b9dc2','#877bf4','#b959f4','#e630cc','#8597ac','#b08860'];
-const state = { season:'all', type:'all', basis:'st', sortKey:'pv', sortDir:'desc', addSortKey:'v', addSortDir:'desc', sel:null, q:'', pos:'', limit:100 };
-let DATA = null;
+const GROUPS = { flex: new Set(['RB','WR','TE']), stream: new Set(['QB','K','DEF']) };
+const GROUP_HINT = { flex:'FLEX = RB, WR, TE', stream:'Streamers = QB, K, DEF', all:'All positions' };
+let EDGE = 3, SPIKE = 8;
+const state = { season:'all', group:'flex', basis:'st', type:'all', sortKey:'par', sortDir:'desc', addSortKey:'v', addSortDir:'desc', focus:null, q:'', limit:100 };
+const TOUCH = matchMedia('(hover: none)').matches;
+let DATA = null, TIPS = [];
 
-function isDark(){
-  const t = document.documentElement.getAttribute('data-theme');
-  if(t) return t==='dark';
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
-function colorOf(m){
-  const i = DATA.managers.indexOf(m);
-  const p = isDark() ? PALETTE_DARK : PALETTE_LIGHT;
-  return i < 0 ? 'var(--text-3)' : p[i % p.length];
-}
+/* ---------- helpers ---------- */
+function isDark(){ const t=document.documentElement.getAttribute('data-theme'); if(t) return t==='dark'; return matchMedia('(prefers-color-scheme: dark)').matches; }
+function colorOf(m){ const i = DATA.managers.indexOf(m); const p = isDark()?PALETTE_DARK:PALETTE_LIGHT; return i<0 ? 'var(--text-3)' : p[i % p.length]; }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = (v, d=1) => v==null || !isFinite(v) ? '—' : Number(v).toLocaleString(undefined,{minimumFractionDigits:d, maximumFractionDigits:d});
-const pct = v => v==null || !isFinite(v) ? '—' : Math.round(v*100)+'%';
+const sgn = (v, d=1) => { if(v==null || !isFinite(v)) return '—'; const r = +(+v).toFixed(d); return r===0 ? fmt(0, d) : (r>0?'+':'') + fmt(r, d); };
+const cls = v => v==null ? 'muted' : v>0 ? 'good' : v<0 ? 'bad' : '';
 const mgrHtml = m => `<span class="mgr"><span class="dot" style="background:${colorOf(m)}"></span>${esc(m)}</span>`;
-const seasonInProgress = s => { const m = DATA.seasons.find(x=>x.s===s); return m && !m.finished; };
+const sum = (arr, f) => arr.reduce((s,x)=>s+(f(x)||0),0);
+const inGroup = pos => state.group==='all' || GROUPS[state.group].has(pos);
+const inSeason = s => state.season==='all' || s===+state.season;
+const seasonMeta = s => DATA.seasons.find(x=>x.s===s);
+const seasonWeeks = s => { const m = seasonMeta(s); return Math.min(m.done, m.reg_end); };
+const val = a => (state.basis==='st' ? a.par : a.parR) ?? 0;
+const regretOf = d => Math.max(0, d.sbp ?? 0);
+const basisWord = () => state.basis==='st' ? 'started' : 'rostered';
+const timTag = a => a.tim ? `<span class="tag ${a.tim}">${a.tim}</span>` : '';
+function whoList(d){ const u=[...new Set((d.sbl||[]).map(x=>x[2]))]; return u.length>2 ? `${u.slice(0,2).join(', ')} +${u.length-2}` : u.join(', '); }
 
-function threshold(pos){ return pos==='QB' ? 18 : (pos==='K'||pos==='DEF') ? 10 : 12; }
-function timing(a){
-  if(a.post==null || a.postg < 2) return null;
-  const T = threshold(a.pos);
-  if(a.post >= T && (a.pre==null ? a.w > 1 : a.pre < T*0.6)) return 'early';
-  if(a.pre!=null && a.preg>=2 && a.pre >= T && a.post < T*0.6) return 'chase';
-  return null;
+function tipAttr(fn){ TIPS.push(fn); return ` data-t="${TIPS.length-1}"`; }
+function tipTable(title, rows, footer, limit=14){
+  const shown = rows.slice(0, limit), more = rows.length - shown.length;
+  const body = shown.map(r => '<tr>' + r.map((c,i)=>`<td class="${i===r.length-1?'r':''}">${c}</td>`).join('') + '</tr>').join('');
+  return `<div class="tt-h">${title}</div>${rows.length?`<table>${body}</table>`:'<div class="o">Nothing here.</div>'}${more>0?`<div class="o">+${more} more</div>`:''}${footer?`<div class="tt-f">${footer}</div>`:''}`;
 }
-function regretOf(a){ return (a.dr||[]).reduce((s,d)=>s+d.sbo,0); }
-function val(a){ return a[state.basis]; }
+function addWeeksTip(a){
+  const me = seasonMeta(a.s), rp = a.rp;
+  const rows = (a.wk||[]).map(([w,p,s,pl]) => {
+    const po = w > me.reg_end;
+    const counts = !po && (state.basis==='st' ? s : pl);
+    const note = po ? 'playoffs' : (!pl ? 'did not play' : '');
+    return [`${a.s} wk${w}`, s ? 'started' : '<span class="o">bench</span>', `<span class="o">${note}</span>`, `<span class="o">${fmt(p)} pts</span>`, counts ? sgn(p - rp) : '<span class="o">—</span>'];
+  });
+  const head = `${esc(a.pl)} · ${esc(a.m)} · ${a.ty==='W'?'$'+a.b+' claim':'free agent'}, ${a.s} wk${a.w}`;
+  const timing = a.tim==='chase' ? `<br>Timing: spike ${sgn(a.spk)} in wk${a.spkw} after ${a.base==null?'no games':sgn(a.base)+' PAR/G'} → ${sgn(a.post)} PAR/G after · <b>chase</b>` : (a.pre!=null || a.post!=null ? `<br>Timing: ${sgn(a.pre)} PAR/G before (${a.pren} g) → ${sgn(a.post)} after (${a.postn} g)${a.tim?` · <b>${a.tim}</b>`:''}` : '');
+  return tipTable(head, rows, `Replacement ${a.pos}: ${fmt(rp,2)} PPG · <b>${sgn(val(a))} ${basisWord()} PAR</b> (${fmt(state.basis==='st'?a.st:a.ro)} pts) · ${endText(a)}${timing}`, 20);
+}
+function endText(a){ return {dropped:'later dropped', traded:'later traded', kept:'kept to season end', active:'still on roster'}[a.end] || a.end; }
+function regretTip(d){
+  const rows = (d.sbl||[]).map(([w,p,m]) => [`${d.s} wk${w}`, esc(m), `<span class="o">${fmt(p)} pts</span>`, sgn(p - d.rp)]);
+  return tipTable(`${esc(d.m)} dropped ${esc(d.pl)} · ${d.s} wk${d.w}`, rows, `Started PAR for other teams: ${sgn(d.sbp)} (replacement ${fmt(d.rp,2)} PPG)${d.sbp<0?' · counts as 0 regret':''}`);
+}
+function timingTip(a){
+  if(a.tim==='chase') return tipTable(`${esc(a.pl)} · chased a one-week spike`, [
+    ['Weeks before that', a.basen ? `${a.basen} games` : 'no games', a.base==null ? '—' : sgn(a.base)+' PAR/G'],
+    [`Spike · wk${a.spkw}`, '1 game', sgn(a.spk)+' PAR'],
+    ['After the pickup', `${a.postn} games`, sgn(a.post)+' PAR/G']],
+    `One big game (≥ +${SPIKE}), nothing sustained before it, replacement-level or worse after.${a.ty==='W'?` Cost $${a.b}.`:''}`);
+  return tipTable(`${esc(a.pl)} · early call`, [
+    ['Before the pickup', `${a.pren} games`, sgn(a.pre)+' PAR/G'], ['After', `${a.postn} games`, sgn(a.post)+' PAR/G']],
+    `Replacement-level before, startable after (≥ +${EDGE}), and held.`);
+}
+const addRow = a => [`${a.s} wk${a.w}`, `${esc(a.pl)} <span class="o">${esc(a.pos)}</span>`, sgn(val(a))];
 
-function filtered(){
-  return DATA.adds.filter(a => (state.season==='all' || a.s===+state.season) && (state.type==='all' || a.ty===state.type));
-}
-function filteredFails(){
-  return DATA.fails.filter(f => state.season==='all' || f.s===+state.season);
-}
+/* ---------- filtering & aggregation ---------- */
+function adds(){ return DATA.adds.filter(a => inSeason(a.s) && inGroup(a.pos) && (state.type==='all' || a.ty===state.type)); }
+function drops(){ return DATA.drops.filter(d => inSeason(d.s) && inGroup(d.pos) && (state.type==='all' || d.ty===state.type)); }
 
 function aggregate(){
-  const adds = filtered(), fails = filteredFails();
-  const rows = {};
-  const get = m => rows[m] ||= {m, n:0, pv:0, po:0, faab:0, faabPv:0, hits:0, regret:0, early:0, chase:0, wOk:0, wFail:0, outbid:0, roster:0, seasons:new Set()};
-  DATA.seasons.forEach(s => { if(state.season==='all' || s.s===+state.season) s.teams.forEach(t => get(t.m).seasons.add(s.s)); });
-  for(const a of adds){
-    const r = get(a.m);
-    r.n++; r.pv += val(a); r.po += a.po;
-    if(a.ty==='W'){ r.faab += a.b; r.faabPv += val(a); r.wOk++; }
-    if(a.st >= DATA.hit_threshold) r.hits++;
-    r.regret += regretOf(a);
-    const t = timing(a); if(t==='early') r.early++; if(t==='chase') r.chase++;
-  }
-  if(state.type!=='F') for(const f of fails){
-    const r = get(f.m); r.wFail++;
-    if(f.c==='outbid') r.outbid++; if(f.c==='roster') r.roster++;
-  }
-  return Object.values(rows).map(r => ({...r,
-    nSeasons: r.seasons.size,
-    perAdd: r.n ? r.pv/r.n : null,
-    perSeason: r.seasons.size ? r.pv/r.seasons.size : null,
-    net: r.pv - r.regret,
-    pvPerDollar: r.faab ? r.faabPv / r.faab : null,
-    hitRate: r.n ? r.hits/r.n : null,
-    claimRate: (r.wOk + r.wFail) ? r.wOk/(r.wOk + r.wFail) : null,
-  })).filter(r => r.n || r.wFail);
-}
-
-const BOARD_COLS = [
-  {k:'m', l:'Manager', cls:'l', tip:'Ranked by person, not roster slot.'},
-  {k:'n', l:'Adds', d:0, tip:'Completed pickups (waiver + free agent per the filter).'},
-  {k:'pv', l:'Pickup pts', d:0, tip:'Total started (or rostered) regular-season points from pickups.'},
-  {k:'perSeason', l:'Pts / season', d:0, tip:'Pickup points divided by seasons played in the filter.'},
-  {k:'perAdd', l:'Pts / add', d:1},
-  {k:'net', l:'Net', d:0, tip:'Pickup points minus what the players dropped in those moves scored in other teams\' lineups.'},
-  {k:'hitRate', l:'Hit rate', p:true, tip:'Share of adds producing at least the hit threshold in started points.'},
-  {k:'faab', l:'FAAB $', d:0, tip:'Winning bids (sum).'},
-  {k:'pvPerDollar', l:'Pts / $', d:2, tip:'FAAB-claim points per FAAB dollar spent. $0 claims are counted in points but not dollars.'},
-  {k:'claimRate', l:'Claim win %', p:true, tip:'Completed FAAB claims ÷ all FAAB claims submitted.'},
-  {k:'outbid', l:'Outbid', d:0, tip:'Failed claims because another team won the player.'},
-  {k:'roster', l:'Roster fails', d:0, tip:'Failed claims because the roster would be too full — roster-management sloppiness.'},
-  {k:'early', l:'Early', d:0, tip:'Pickups made before a breakout (see methodology).'},
-  {k:'regret', l:'Regret', d:0, tip:'Points dropped players scored for other teams afterwards. Lower is better.'},
-];
-
-function renderHead(table, cols, key, dir, onSort){
-  const thead = table.querySelector('thead');
-  thead.innerHTML = '<tr>' + cols.map(c => `<th class="${c.cls||''}" data-k="${c.k}" ${c.k===key?`data-dir="${dir}"`:''} ${c.tip?`data-tip="${esc(c.tip)}"`:''}>${c.l}</th>`).join('') + '</tr>';
-  thead.querySelectorAll('th').forEach(th => {
-    th.onclick = ev => { ev.stopPropagation(); onSort(th.dataset.k); };
-    if(th.dataset.tip){
-      th.onmousemove = ev => showTip(ev, th.dataset.tip);
-      th.onmouseleave = hideTip;
-    }
+  const A = adds(), D = drops(), rows = {};
+  const get = m => rows[m] ||= {m, adds:[], drops:[], seasons:[]};
+  DATA.seasons.forEach(s => { if(inSeason(s.s)) s.teams.forEach(t => get(t.m).seasons.push(s.s)); });
+  A.forEach(a => get(a.m).adds.push(a));
+  D.forEach(d => get(d.m).drops.push(d));
+  return Object.values(rows).filter(r => r.seasons.length).map(r => {
+    const par = sum(r.adds, val), weeks = sum(r.seasons, seasonWeeks);
+    const claims = r.adds.filter(a=>a.ty==='W'), fab = sum(claims, a=>a.b);
+    const regret = sum(r.drops, regretOf);
+    return {...r, par, weeks, parWk: weeks ? par/weeks : null, n:r.adds.length,
+      hits: r.adds.filter(a=>(a.par??0) >= DATA.hit_threshold).length,
+      early: r.adds.filter(a=>a.tim==='early').length, chase: r.adds.filter(a=>a.tim==='chase').length,
+      fab, ppd: fab ? sum(claims, val)/fab : null, regret, net: par - regret};
   });
 }
+
+const BOARD_TIPS = {
+  par: r => tipTable(`${esc(r.m)} · ${basisWord()} PAR from pickups`, r.adds.filter(a=>val(a)!==0).sort((a,b)=>val(b)-val(a)).map(addRow), `${sgn(r.par)} PAR from ${r.n} pickups`),
+  parWk: r => tipTable(`${esc(r.m)} · PAR per week`, r.seasons.slice().sort().map(s => { const p = sum(r.adds.filter(a=>a.s===s), val), w = seasonWeeks(s); return [`${s}${seasonMeta(s).finished?'':'*'}`, `${sgn(p,0)} over ${w} wks`, sgn(p/w,2)]; }), `${sgn(r.par,0)} ÷ ${r.weeks} wks = ${sgn(r.parWk,2)} per week`),
+  hits: r => tipTable(`${esc(r.m)} · ${DATA.hit_threshold}+ started PAR`, r.adds.filter(a=>(a.par??0)>=DATA.hit_threshold).sort((a,b)=>b.par-a.par).map(a=>[`${a.s} wk${a.w}`, `${esc(a.pl)} <span class="o">${esc(a.pos)}</span>`, sgn(a.par)])),
+  early: r => tipTable(`${esc(r.m)} · early calls`, r.adds.filter(a=>a.tim==='early').sort((a,b)=>val(b)-val(a)).map(a=>[`${a.s} wk${a.w}`, esc(a.pl), `${sgn(a.pre)} → ${sgn(a.post)}`, sgn(val(a))]), 'PAR/G before → after · PAR for you'),
+  chase: r => tipTable(`${esc(r.m)} · chases`, r.adds.filter(a=>a.tim==='chase').sort((a,b)=>b.b-a.b || b.spk-a.spk).map(a=>[`${a.s} wk${a.w}`, esc(a.pl), `spike ${sgn(a.spk)} → ${sgn(a.post)}/G`, a.ty==='W'?'$'+a.b:'FA']), 'spike game PAR → PAR/G after · cost'),
+  fab: r => tipTable(`${esc(r.m)} · winning FAB bids`, r.adds.filter(a=>a.ty==='W' && a.b>0).sort((a,b)=>b.b-a.b).map(a=>[`${a.s} wk${a.w}`, esc(a.pl), '$'+a.b]), `$${fmt(r.fab,0)} total`),
+  ppd: r => tipTable(`${esc(r.m)} · ${basisWord()} PAR per FAB $`, r.adds.filter(a=>a.ty==='W' && a.b>0).sort((a,b)=>b.b-a.b).map(a=>[`${a.s} wk${a.w}`, esc(a.pl), `$${a.b} → ${sgn(val(a))}`]), `${sgn(sum(r.adds.filter(a=>a.ty==='W'),val))} PAR ÷ $${fmt(r.fab,0)} = ${sgn(r.ppd,2)}`),
+  regret: r => tipTable(`${esc(r.m)} · dropped, then started elsewhere`, r.drops.filter(d=>regretOf(d)>0).sort((a,b)=>b.sbp-a.sbp).map(d=>[`${d.s} wk${d.w}`, `${esc(d.pl)} <span class="o">${esc(d.pos)}</span>`, `<span class="o">${whoList(d)}</span>`, sgn(d.sbp)]), `${fmt(r.regret)} PAR for other teams`),
+  net: r => tipTable(`${esc(r.m)} · net`, [['Pickup PAR', sgn(r.par)], ['Regret', '− '+fmt(r.regret)]], `Net ${sgn(r.net)}`),
+};
+const BOARD_COLS = [
+  {k:'m', l:'Manager', cls:'l', h:'Ranked by person, not roster slot.'},
+  {k:'par', l:'PAR', d:0, sg:true, h:'Points above replacement from pickups (started or rostered, per the toggle). Regular season.'},
+  {k:'parWk', l:'PAR / wk', d:2, sg:true, h:'PAR ÷ regular-season weeks played: weekly lineup boost from the wire. Comparable across seasons.'},
+  {k:'hits', l:'Difference-makers', d:0, h:'Pickups worth 25+ started PAR.'},
+  {k:'early', l:'Early calls', d:0, h:'Added at replacement level, held, then startable.'},
+  {k:'chase', l:'Chases', d:0, h:'Added right after a single spike game, then replacement level or worse. Lower is better.'},
+  {k:'fab', l:'FAB spent', d:0, pre:'$', h:'Sum of winning bids.'},
+  {k:'ppd', l:'PAR per $', d:2, sg:true, h:'PAR from FAB claims ÷ FAB dollars spent.'},
+  {k:'regret', l:'Regret', d:0, h:'Started PAR that dropped players produced for other managers. Lower is better.'},
+  {k:'net', l:'Net', d:0, sg:true, h:'PAR − regret.'},
+];
+
+/* ---------- renderers ---------- */
 function sorter(key, dir){
-  return (a,b) => {
-    let x=a[key], y=b[key];
+  return (a,b) => { let x=a[key], y=b[key];
     if(x==null && y==null) return 0; if(x==null) return 1; if(y==null) return -1;
-    const r = typeof x==='string' ? x.localeCompare(y) : x - y;
-    return dir==='asc' ? r : -r;
-  };
+    const r = typeof x==='string' ? x.localeCompare(y) : x - y; return dir==='asc' ? r : -r; };
 }
+function renderHead(table, cols, key, dir, onSort){
+  table.querySelector('thead').innerHTML = '<tr>' + cols.map(c => `<th class="${c.cls||''}" data-k="${c.k}" ${c.k===key?`data-dir="${dir}"`:''}${c.h?tipAttr(()=>esc(c.h)):''}>${c.l}</th>`).join('') + '</tr>';
+  table.querySelectorAll('th').forEach(th => th.addEventListener('click', () => onSort(th.dataset.k)));
+}
+const ASC_FIRST = new Set(['m','regret','chase','pl','dropped']);
 
 function renderBoard(){
   const rows = aggregate().sort(sorter(state.sortKey, state.sortDir));
   const tbl = document.getElementById('board');
-  const cols = BOARD_COLS.map(c => c.k==='pv' ? {...c, l: state.basis==='st' ? 'Started pts' : 'Rostered pts'} : c);
-  renderHead(tbl, cols, state.sortKey, state.sortDir, k => {
-    if(state.sortKey===k) state.sortDir = state.sortDir==='desc' ? 'asc' : 'desc';
-    else { state.sortKey=k; state.sortDir = (k==='m' || k==='regret' || k==='roster' || k==='outbid') ? 'asc' : 'desc'; }
+  renderHead(tbl, BOARD_COLS, state.sortKey, state.sortDir, k => {
+    if(state.sortKey===k) state.sortDir = state.sortDir==='desc'?'asc':'desc';
+    else { state.sortKey=k; state.sortDir = ASC_FIRST.has(k) ? 'asc' : 'desc'; }
     renderBoard();
   });
-  tbl.querySelector('tbody').innerHTML = rows.map(r => `<tr data-m="${esc(r.m)}" class="${r.m===state.sel?'sel':''}">` + cols.map(c => {
+  tbl.querySelector('tbody').innerHTML = rows.map(r => `<tr data-m="${esc(r.m)}" class="${r.m===state.focus?'sel':''}">` + BOARD_COLS.map(c => {
     if(c.k==='m') return `<td class="l">${mgrHtml(r.m)}</td>`;
     const v = r[c.k];
-    const txt = c.p ? pct(v) : fmt(v, c.d ?? 1);
-    const cls = c.k==='net' ? (v>=0?'good':'bad') : '';
-    return `<td class="${cls}">${txt}</td>`;
+    const txt = v==null ? '—' : c.sg ? sgn(v, c.d) : (c.pre||'') + fmt(v, c.d);
+    return `<td class="${c.sg ? cls(v) : ''}"${tipAttr(() => BOARD_TIPS[c.k](r))}>${txt}</td>`;
   }).join('') + '</tr>').join('');
-  tbl.querySelectorAll('tbody tr').forEach(tr => tr.onclick = () => {
-    state.sel = state.sel===tr.dataset.m ? null : tr.dataset.m;
-    renderBoard(); renderDrill();
-    if(state.sel) document.getElementById('drill').scrollIntoView({behavior:'smooth', block:'nearest'});
-  });
+  tbl.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', ev => {
+    if(TOUCH && ev.target.closest('td[data-t]')) return;
+    setFocus(state.focus===tr.dataset.m ? null : tr.dataset.m);
+  }));
   renderTiles(rows);
 }
 
+// FAB wasted: $10+ claims that returned no value (PAR <= 0), biggest bids first; live-season pickups
+// still on a roster are skipped because they haven't had time to pay off
+function busts(A){ return A.filter(a => a.ty==='W' && a.b >= 10 && a.end!=='active' && val(a) <= 0).sort((a,b) => b.b - a.b || val(a) - val(b)); }
+
 function renderTiles(rows){
-  const adds = filtered();
-  const best = (arr, k, dir=-1) => arr.filter(r=>r[k]!=null).sort((a,b)=>dir*(a[k]-b[k]))[0];
-  const topAdd = adds.slice().sort((a,b)=>val(b)-val(a))[0];
-  const bestPv = best(rows,'pv'), bestRate = best(rows.filter(r=>r.n>=10),'hitRate'), bestEff = best(rows.filter(r=>r.faab>=50),'pvPerDollar');
-  const faab = adds.filter(a=>a.ty==='W').reduce((s,a)=>s+a.b,0);
-  const tiles = [
-    {num: fmt(adds.length,0), lbl:'completed adds', who: `${fmt(faab,0)} FAAB dollars spent`},
-    bestPv && {num: fmt(bestPv.pv,0), lbl: state.basis==='st'?'most started pickup pts':'most rostered pickup pts', who: mgrHtml(bestPv.m)},
-    bestRate && {num: pct(bestRate.hitRate), lbl:'best hit rate (10+ adds)', who: mgrHtml(bestRate.m)},
-    bestEff && {num: fmt(bestEff.pvPerDollar,2), lbl:'pts per FAAB $ ($50+ spent)', who: mgrHtml(bestEff.m)},
-    topAdd && {num: fmt(val(topAdd),1), lbl:`best pickup · ${topAdd.s} wk ${topAdd.w}`, who: `${esc(topAdd.pl)} — ${mgrHtml(topAdd.m)}`},
-  ].filter(Boolean);
-  document.getElementById('tiles').innerHTML = tiles.map(t => `<div class="tile"><div class="num">${t.num}</div><div class="lbl">${t.lbl}</div><div class="who">${t.who}</div></div>`).join('');
+  const A = adds(), D = drops();
+  const king = rows.slice().sort((a,b)=>b.par-a.par)[0];
+  const best = A.slice().sort((a,b)=>val(b)-val(a))[0];
+  const early = A.filter(a=>a.tim==='early').sort((a,b)=>val(b)-val(a))[0];
+  const regret = D.slice().sort((a,b)=>regretOf(b)-regretOf(a))[0];
+  const bust = busts(A)[0];
+  const t = [];
+  if(king) t.push({lbl:'Waiver king', num:`${sgn(king.par,0)} PAR`, who:`${mgrHtml(king.m)} <span class="muted">${sgn(king.parWk,1)}/wk</span>`, tip:()=>BOARD_TIPS.par(king)});
+  if(best) t.push({lbl:'Best pickup', num:`${sgn(val(best))} PAR`, who:`${esc(best.pl)} · ${mgrHtml(best.m)} <span class="muted">${best.s}</span>`, tip:()=>addWeeksTip(best)});
+  if(early) t.push({lbl:'Best early call', num:`${sgn(val(early))} PAR`, who:`${esc(early.pl)} · ${mgrHtml(early.m)} <span class="muted">${early.s}</span>`, tip:()=>addWeeksTip(early)});
+  if(regret && regretOf(regret)>0) t.push({lbl:'Biggest regret', num:`${sgn(regret.sbp)} PAR`, who:`${esc(regret.pl)}, dropped by ${mgrHtml(regret.m)} <span class="muted">${regret.s}</span>`, tip:()=>regretTip(regret)});
+  if(bust) t.push({lbl:'Worst FAB spend', num:`$${bust.b} → ${sgn(val(bust),0)}`, who:`${esc(bust.pl)} · ${mgrHtml(bust.m)} <span class="muted">${bust.s}</span>`, tip:()=>addWeeksTip(bust)});
+  document.getElementById('tiles').innerHTML = t.map(x => `<div class="tile"${tipAttr(x.tip)}><div class="lbl">${x.lbl}</div><div class="num">${x.num}</div><div class="who">${x.who}</div></div>`).join('');
 }
 
-function addLine(a, right){
-  const bid = a.ty==='W' ? `$${a.b}` : 'FA';
-  return `<li><span><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)} <span class="ctx">${a.s} wk${a.w} · ${bid}</span></span><span>${right}</span></li>`;
-}
-function renderDrill(){
-  const box = document.getElementById('drill');
-  if(!state.sel){ box.hidden = true; return; }
-  box.hidden = false;
-  const m = state.sel;
-  const adds = filtered().filter(a=>a.m===m);
-  document.getElementById('drillTitle').innerHTML = mgrHtml(m);
-  document.getElementById('drillNote').textContent = `${adds.length} adds in this view`;
-  const best = adds.slice().sort((a,b)=>val(b)-val(a)).slice(0,8);
-  const busts = adds.filter(a=>a.ty==='W' && a.b>0).sort((a,b)=> (val(a)/a.b) - (val(b)/b.b) || b.b-a.b).slice(0,8);
-  const early = adds.filter(a=>timing(a)==='early').sort((a,b)=>val(b)-val(a)).slice(0,8);
-  const regrets = adds.flatMap(a => (a.dr||[]).map(d => ({...d, s:a.s, w:a.w}))).sort((a,b)=>b.sbo-a.sbo).filter(d=>d.sbo>0).slice(0,8);
-  const list = (title, items, fn) => `<div><h3>${title}</h3>${items.length ? `<ul class="drill-list">${items.map(fn).join('')}</ul>` : '<div class="empty">None in this view.</div>'}</div>`;
-  document.getElementById('drillBody').innerHTML =
-    list('Best pickups', best, a => addLine(a, `${fmt(val(a))} pts`)) +
-    list('Worst FAAB spends (pts per $)', busts, a => addLine(a, `${fmt(val(a),0)} pts / $${a.b}`)) +
-    list('Ahead of the breakout', early, a => addLine(a, `${fmt(a.pre??0)} → ${fmt(a.post)} ppg`)) +
-    list('Dropped, then started elsewhere', regrets, d => `<li><span><span class="pos-pill">${esc(d.pos)}</span>${esc(d.pl)} <span class="ctx">${d.s} wk${d.w}</span></span><span class="bad">${fmt(d.sbo)} pts</span></li>`);
-}
-
-function renderRegrets(){
-  const drops = DATA.drops.filter(d => (state.season==='all' || d.s===+state.season) && (state.type==='all' || d.ty===state.type) && d.sbo>0)
-    .sort((a,b)=>b.sbo-a.sbo).slice(0,12);
-  document.getElementById('regrets').innerHTML = drops.length ? drops.map(d => `<li><span>${mgrHtml(d.m)} dropped <span class="pos-pill">${esc(d.pos)}</span>${esc(d.pl)} <span class="ctx">${d.s} wk${d.w}</span></span><span class="bad">${fmt(d.sbo)} pts</span></li>`).join('') : '<li class="empty">No regrets yet.</li>';
+function renderHeat(){
+  const tbl = document.getElementById('heat');
+  const seasons = DATA.seasons.map(s=>s.s);
+  const managers = aggregate().sort((a,b)=>b.par-a.par).map(r=>r.m);
+  const all = DATA.adds.filter(a => inGroup(a.pos) && (state.type==='all' || a.ty===state.type));
+  const cell = {}; all.forEach(a => { (cell[a.m+'|'+a.s] ||= []).push(a); });
+  const played = new Set(); DATA.seasons.forEach(s => s.teams.forEach(t => played.add(t.m+'|'+s.s)));
+  // shade by PAR per week so the partial season sits on the same scale
+  const perWk = (list, s) => sum(list, val) / seasonWeeks(s);
+  const maxAbs = Math.max(0.5, ...[...played].map(k => { const s=+k.split('|')[1]; return Math.abs(perWk(cell[k]||[], s)); }));
+  tbl.querySelector('thead').innerHTML = '<tr><th>Manager</th>' + seasons.map(s => `<th class="${state.season!=='all'&&inSeason(s)?'cur':''}">${s}${seasonMeta(s).finished?'':'*'}</th>`).join('') + '<th>Total</th></tr>';
+  tbl.querySelector('tbody').innerHTML = managers.map(m => {
+    let tot = 0;
+    const tds = seasons.map(s => {
+      const k = m+'|'+s;
+      if(!played.has(k)) return '<td class="c dim"></td>';
+      const list = cell[k] || [], v = sum(list, val); tot += v;
+      const a = Math.min(1, Math.abs(perWk(list, s)) / maxAbs);
+      const faded = state.season!=='all' && !inSeason(s);
+      const bg = `rgba(var(${v>=0?'--heat':'--heatneg'}), ${(0.05 + a*0.75) * (faded ? .35 : 1)})`;
+      const strong = a > .55 && !faded;
+      return `<td class="c" style="background:${bg};${strong?'color:#fff':''}"${tipAttr(()=>tipTable(`${esc(m)} · ${s} pickups`, list.filter(x=>val(x)!==0).sort((x,y)=>val(y)-val(x)).map(addRow), `${sgn(v)} ${basisWord()} PAR from ${list.length} pickups · ${sgn(v/seasonWeeks(s),2)} per week`))}>${sgn(v,0)}</td>`;
+    }).join('');
+    return `<tr class="${m===state.focus?'sel':''}"><td class="l">${mgrHtml(m)}</td>${tds}<td class="tot ${cls(tot)}">${sgn(tot,0)}</td></tr>`;
+  }).join('');
 }
 
-function renderScatter(){
-  const svg = d3.select('#scatter'); svg.selectAll('*').remove();
-  const node = svg.node(); const W = node.clientWidth || 500, H = node.clientHeight || 360;
-  const M = {t:12, r:16, b:38, l:48};
-  const pts = [];
-  DATA.seasons.forEach(s => {
-    if(state.season!=='all' && s.s!==+state.season) return;
-    s.teams.forEach(t => {
-      const a = DATA.adds.filter(x => x.s===s.s && x.m===t.m && x.ty==='W');
-      pts.push({m:t.m, s:s.s, faab:a.reduce((q,x)=>q+x.b,0), pv:a.reduce((q,x)=>q+val(x),0), n:a.length, prog:!s.finished});
-    });
-  });
-  if(!pts.length) return;
-  const x = d3.scaleLinear().domain([0, Math.max(200, d3.max(pts,d=>d.faab))]).nice().range([M.l, W-M.r]);
-  const y = d3.scaleLinear().domain([0, d3.max(pts,d=>d.pv)||1]).nice().range([H-M.b, M.t]);
-  svg.append('g').attr('class','gridline').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W-M.l-M.r)).tickFormat('')).select('.domain').remove();
-  svg.append('g').attr('class','axis').attr('transform',`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(6).tickFormat(d=>'$'+d));
-  svg.append('g').attr('class','axis').attr('transform',`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5));
-  svg.append('text').attr('x', W-M.r).attr('y', H-6).attr('text-anchor','end').attr('fill','var(--text-3)').attr('font-size',11).text('FAAB spent →');
-  svg.append('text').attr('x', M.l+4).attr('y', M.t+10).attr('fill','var(--text-3)').attr('font-size',11).text(`↑ ${state.basis==='st'?'started':'rostered'} pts from FAAB claims`);
-  svg.append('g').selectAll('circle').data(pts).join('circle')
-    .attr('cx',d=>x(d.faab)).attr('cy',d=>y(d.pv)).attr('r',d=> state.sel && d.m!==state.sel ? 4 : 6)
-    .attr('fill',d=>colorOf(d.m)).attr('fill-opacity',d=> state.sel && d.m!==state.sel ? .18 : (d.prog?.45:.85))
-    .attr('stroke','var(--surface)').attr('stroke-width',1.5).style('cursor','pointer')
-    .on('mousemove',(ev,d)=>showTip(ev, `<b>${esc(d.m)}</b> · ${d.s}${d.prog?' (in progress)':''}<br>$${d.faab} on ${d.n} claims<br>${fmt(d.pv)} pts · ${d.faab?fmt(d.pv/d.faab,2):'—'} pts/$`))
-    .on('mouseleave',hideTip)
-    .on('click',(ev,d)=>{ ev.stopPropagation(); showTip(ev, `<b>${esc(d.m)}</b> · ${d.s}<br>$${d.faab} on ${d.n} claims<br>${fmt(d.pv)} pts`); });
+function li(main, ctx, value, sub, tip){
+  return `<li${tipAttr(tip)}><span class="main">${main}<span class="ctx">${ctx}</span></span><span class="val">${value}${sub?`<small>${sub}</small>`:''}</span></li>`;
+}
+function renderCards(){
+  const f = x => !state.focus || x.m===state.focus;
+  const A = adds().filter(f), D = drops().filter(f);
+  const who = m => state.focus ? '' : `${esc(m)} · `;
+  const empty = '<li class="empty">Nothing in this view.</li>';
+  const pl = x => `<span class="pos-pill">${esc(x.pos)}</span>${esc(x.pl)}`;
+  document.getElementById('bestList').innerHTML = A.filter(a=>val(a)>0).sort((a,b)=>val(b)-val(a)).slice(0,8)
+    .map(a => li(pl(a), `${who(a.m)}${a.s} wk${a.w} · ${a.ty==='W'?'$'+a.b:'FA'}`, `<span class="good">${sgn(val(a))}</span>`, `${a.ws} wks started`, ()=>addWeeksTip(a))).join('') || empty;
+  document.getElementById('earlyList').innerHTML = A.filter(a=>a.tim==='early').sort((a,b)=>val(b)-val(a)).slice(0,8)
+    .map(a => li(pl(a), `${who(a.m)}${a.s} wk${a.w} · ${a.ty==='W'?'$'+a.b:'FA'}`, `<span class="${cls(val(a))}">${sgn(val(a))}</span>`, `${sgn(a.pre)} → ${sgn(a.post)} PAR/G`, ()=>addWeeksTip(a))).join('') || empty;
+  document.getElementById('regretList').innerHTML = D.filter(d=>regretOf(d)>0).sort((a,b)=>b.sbp-a.sbp).slice(0,8)
+    .map(d => li(pl(d), `${who(d.m)}dropped ${d.s} wk${d.w}`, `<span class="bad">${sgn(d.sbp)}</span>`, `for ${whoList(d)}`, ()=>regretTip(d))).join('') || empty;
+  document.getElementById('bustList').innerHTML = busts(A).slice(0,8)
+    .map(a => li(pl(a), `${who(a.m)}${a.s} wk${a.w}`, `$${a.b} → <span class="${cls(val(a))}">${sgn(val(a),0)}</span>`, `${a.ws} wks started · ${endText(a)}`, ()=>addWeeksTip(a))).join('') || empty;
+  document.getElementById('cardsTitle').textContent = state.focus ? `${state.focus}'s transactions that mattered` : 'Transactions that mattered';
+  document.getElementById('focus').innerHTML = state.focus ? `<span class="filter-pill">${mgrHtml(state.focus)}<button aria-label="Clear manager focus" id="clearFocus">✕</button></span>` : '<span class="note">click a manager in the leaderboard to focus</span>';
+  const cf = document.getElementById('clearFocus'); if(cf) cf.onclick = () => setFocus(null);
 }
 
 const ADD_COLS = [
-  {k:'pl', l:'Player', cls:'l'}, {k:'m', l:'Manager', cls:'l'}, {k:'s', l:'Season', d:0}, {k:'w', l:'Wk', d:0},
-  {k:'ty', l:'Type', cls:'l'}, {k:'b', l:'Bid', d:0}, {k:'v', l:'Pts', d:1}, {k:'po', l:'Playoff', d:1},
-  {k:'ws', l:'Wks started', d:0}, {k:'end', l:'Ended', cls:'l'}, {k:'dropped', l:'Dropped', cls:'l'}, {k:'rg', l:'Regret', d:1},
+  {k:'pl', l:'Player', cls:'l'}, {k:'m', l:'Manager', cls:'l'}, {k:'s', l:'Season'}, {k:'w', l:'Wk'},
+  {k:'b', l:'Bid'}, {k:'v', l:'PAR'}, {k:'pts', l:'Pts'}, {k:'dropped', l:'Dropped', cls:'l'}, {k:'rg', l:'Regret'},
 ];
 function renderAdds(){
   const q = state.q.toLowerCase();
-  let rows = filtered().filter(a => (!state.pos || a.pos===state.pos) && (!q || a.pl.toLowerCase().includes(q) || a.m.toLowerCase().includes(q) || (a.dr||[]).some(d=>d.pl.toLowerCase().includes(q))))
-    .map(a => ({...a, v: val(a), rg: regretOf(a), dropped: (a.dr||[]).map(d=>d.pl).join(', ')}));
-  rows.sort(sorter(state.addSortKey, state.addSortDir));
+  let rows = adds().filter(a => (!state.focus || a.m===state.focus) && (!q || a.pl.toLowerCase().includes(q) || a.m.toLowerCase().includes(q) || (a.dr||[]).some(d=>d.pl.toLowerCase().includes(q))))
+    .map(a => ({...a, v: val(a), pts: state.basis==='st' ? a.st : a.ro, rg: sum(a.dr||[], regretOf), dropped: (a.dr||[]).map(d=>d.pl).join(', '), bsort: a.ty==='W' ? a.b : -1}));
+  rows.sort(sorter(state.addSortKey==='b' ? 'bsort' : state.addSortKey, state.addSortDir));
   const tbl = document.getElementById('adds');
-  renderHead(tbl, ADD_COLS.map(c=>c.k==='v'?{...c,l:state.basis==='st'?'Started':'Rostered'}:c), state.addSortKey, state.addSortDir, k => {
-    if(state.addSortKey===k) state.addSortDir = state.addSortDir==='desc'?'asc':'desc'; else { state.addSortKey=k; state.addSortDir = ['pl','m','ty','end','dropped'].includes(k)?'asc':'desc'; }
+  renderHead(tbl, ADD_COLS.map(c=>c.k==='v'?{...c,l:state.basis==='st'?'Started PAR':'Rostered PAR'}:c.k==='pts'?{...c,l:state.basis==='st'?'Started pts':'Rostered pts'}:c), state.addSortKey, state.addSortDir, k => {
+    if(state.addSortKey===k) state.addSortDir = state.addSortDir==='desc'?'asc':'desc'; else { state.addSortKey=k; state.addSortDir = ASC_FIRST.has(k)?'asc':'desc'; }
     renderAdds();
   });
-  const shown = rows.slice(0, state.limit);
-  tbl.querySelector('tbody').innerHTML = shown.map(a => {
-    const t = timing(a);
-    const tag = t ? `<span class="tag" style="color:var(--${t==='early'?'good':'warn'})">${t}</span>` : '';
-    const prog = seasonInProgress(a.s) ? '<span class="tag">live</span>' : '';
-    return `<tr><td class="l"><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)}${tag}</td><td class="l">${mgrHtml(a.m)}</td><td>${a.s}${prog}</td><td>${a.w}</td>
-      <td class="l">${a.ty==='W'?'Waiver':'FA'}</td><td>${a.ty==='W'?'$'+a.b:'—'}</td><td>${fmt(a.v)}</td><td class="muted">${a.po?fmt(a.po):'—'}</td>
-      <td>${a.ws}</td><td class="l muted">${a.end}</td><td class="l muted">${esc(a.dropped)||'—'}</td><td class="${a.rg>0?'bad':'muted'}">${a.rg?fmt(a.rg):'—'}</td></tr>`;
+  tbl.querySelector('tbody').innerHTML = rows.slice(0, state.limit).map(a => {
+    const live = seasonMeta(a.s).finished ? '' : '<span class="tag">live</span>';
+    const wk = ()=>addWeeksTip(a);
+    const rg = a.dr && a.dr.length ? () => a.dr.map(d => regretTip({...d, s:a.s, w:a.w, m:a.m})).join('<div style="height:8px"></div>') : null;
+    const tt = a.tim ? `<span${tipAttr(()=>timingTip(a))}>${timTag(a)}</span>` : '';
+    return `<tr><td class="l"><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)}${tt}</td><td class="l">${mgrHtml(a.m)}</td><td>${a.s}${live}</td><td>${a.w}</td>
+      <td>${a.ty==='W'?'$'+a.b:'<span class="muted">FA</span>'}</td><td class="${cls(a.v)}"${tipAttr(wk)}>${sgn(a.v)}</td><td class="muted"${tipAttr(wk)}>${fmt(a.pts)}</td>
+      <td class="l muted"${rg?tipAttr(rg):''}>${esc(a.dropped)||'—'}</td><td class="${a.rg>0?'bad':'muted'}"${rg?tipAttr(rg):''}>${a.rg?fmt(a.rg):'—'}</td></tr>`;
   }).join('') || `<tr><td class="l empty" colspan="${ADD_COLS.length}">No pickups match.</td></tr>`;
   const more = document.getElementById('moreBtn');
   more.hidden = rows.length <= state.limit;
   more.textContent = `Show more (${rows.length - state.limit} left)`;
 }
 
-function renderAll(){ renderBoard(); renderDrill(); renderScatter(); renderRegrets(); renderAdds(); }
+function renderRepl(){
+  const pos = ['QB','RB','WR','TE','K','DEF'];
+  const rows = DATA.seasons.filter(s=>s.repl).map(s => `<tr><td class="l">${s.s}${s.finished?'':'*'}</td><td>${s.repl.teams}</td>` + pos.map(p => {
+    const r = s.repl.pos[p]; if(!r) return '<td>—</td>';
+    return `<td${tipAttr(()=>tipTable(`${s.s} ${p} replacement`, [['Started per week', fmt(r.st)], ['+ bench depth', fmt(r.buf)], ['= cutoff rank', p+r.rank], ['Player at cutoff', `${esc(r.who)} (${r.gp} g)`], ['Replacement PPG', fmt(r.ppg,2)]], `${s.repl.weeks} weeks · ${s.repl.src==='trade-network'?'from the Trade Network':'rebuilt locally (same method)'}`))}>${p}${r.rank} · ${fmt(r.ppg,2)}</td>`;
+  }).join('') + '</tr>').join('');
+  document.getElementById('replTable').innerHTML = `<thead><tr><th class="l">Season</th><th>Teams</th>${pos.map(p=>`<th>${p}</th>`).join('')}</tr></thead><tbody>${rows}</tbody>`;
+}
 
+function setFocus(m){ state.focus = m; state.limit = 100; renderAll(); }
+function renderAll(){
+  TIPS = [];
+  document.getElementById('hint').textContent = `${GROUP_HINT[state.group]} · ${state.basis==='st'?'PAR from weeks in the starting lineup':'PAR from every rostered week he played'}`;
+  renderBoard(); renderHeat(); renderCards(); renderAdds(); renderRepl();
+}
+
+/* ---------- tooltip plumbing ---------- */
 const tip = document.getElementById('tip');
+let tipOwner = null;
 function showTip(ev, html){
   tip.innerHTML = html; tip.style.opacity = 1;
   const w = tip.offsetWidth, h = tip.offsetHeight, pad = 14;
   let x = ev.clientX + pad, y = ev.clientY + pad;
   if(x + w > innerWidth - 6) x = Math.max(6, ev.clientX - w - pad);
-  if(y + h > innerHeight - 6) y = Math.max(6, innerHeight - h - 6);
+  if(y + h > innerHeight - 6) y = Math.max(6, ev.clientY - h - pad);
+  if(y < 6) y = 6;
   tip.style.left = x+'px'; tip.style.top = y+'px';
 }
-function hideTip(){ tip.style.opacity = 0; }
-document.addEventListener('click', hideTip);
+function hideTip(){ tip.style.opacity = 0; tipOwner = null; }
+document.addEventListener('mousemove', ev => {
+  if(TOUCH) return;
+  const el = ev.target.closest('[data-t]');
+  if(!el){ if(tipOwner) hideTip(); return; }
+  const fn = TIPS[+el.dataset.t]; if(!fn) return;
+  if(tipOwner !== el){ tipOwner = el; tip.innerHTML = fn(); }
+  showTip(ev, tip.innerHTML);
+});
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-t]');
+  if(TOUCH && el && TIPS[+el.dataset.t]){
+    if(tipOwner === el){ hideTip(); return; }
+    tipOwner = el; showTip(ev, TIPS[+el.dataset.t]()); return;
+  }
+  if(TOUCH) hideTip();
+});
+addEventListener('scroll', () => { if(TOUCH) hideTip(); }, {passive:true});
 
+/* ---------- boot ---------- */
 function wireSeg(id, key){
   document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
     state[key] = b.dataset.v; state.limit = 100;
@@ -448,34 +522,29 @@ function wireSeg(id, key){
     renderAll();
   });
 }
-
 fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
   DATA = d;
   document.getElementById('hitT').textContent = d.hit_threshold;
+  EDGE = d.timing_edge ?? EDGE; SPIKE = d.chase_spike ?? SPIKE;
+  document.querySelectorAll('.edge').forEach(e => e.textContent = EDGE);
+  document.querySelectorAll('.spike').forEach(e => e.textContent = SPIKE);
   const gen = new Date(d.generated);
   document.getElementById('updated').textContent = `Updated ${gen.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · NFL ${d.nfl.season} wk ${d.nfl.week}`;
   const chips = document.getElementById('seasonChips');
-  const opts = ['all', ...d.seasons.map(s=>s.s)];
-  chips.innerHTML = opts.map(o => { const s = d.seasons.find(x=>x.s===o); return `<button class="chip" data-v="${o}" aria-pressed="${o==='all'}">${o==='all'?'All seasons':o}${s&&!s.finished?'*':''}</button>`; }).join('');
+  chips.innerHTML = ['all', ...d.seasons.map(s=>s.s)].map(o => { const s = d.seasons.find(x=>x.s===o); return `<button class="chip" data-v="${o}" aria-pressed="${o==='all'}">${o==='all'?'All seasons':o}${s&&!s.finished?'*':''}</button>`; }).join('');
   chips.querySelectorAll('.chip').forEach(c => c.onclick = () => {
     state.season = c.dataset.v; state.limit = 100;
     chips.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x===c));
     renderAll();
   });
-  const pos = [...new Set(d.adds.map(a=>a.pos))].filter(Boolean).sort();
-  document.getElementById('posSel').innerHTML += pos.map(p=>`<option>${esc(p)}</option>`).join('');
-  document.getElementById('posSel').onchange = e => { state.pos = e.target.value; state.limit=100; renderAdds(); };
-  document.getElementById('q').oninput = e => { state.q = e.target.value; state.limit=100; renderAdds(); };
+  document.getElementById('q').oninput = e => { state.q = e.target.value; state.limit = 100; renderAdds(); };
   document.getElementById('moreBtn').onclick = () => { state.limit += 200; renderAdds(); };
-  wireSeg('typeSeg','type'); wireSeg('basisSeg','basis');
+  wireSeg('groupSeg','group'); wireSeg('basisSeg','basis'); wireSeg('typeSeg','type');
   const inprog = d.seasons.find(s=>!s.finished);
-  if(inprog) document.getElementById('boardNote').textContent = `* ${inprog.s} is in progress (through week ${inprog.done}). Click a manager for their best and worst moves.`;
+  if(inprog) document.getElementById('boardNote').textContent = `* ${inprog.s} is in progress (through week ${inprog.done}). Hover any number to see what's in it; click a manager to focus the page on them.`;
   renderAll();
-  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderScatter, 150); });
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', renderAll);
-}).catch(err => {
-  document.getElementById('updated').textContent = 'Could not load data.json — ' + err;
-});
+}).catch(err => { document.getElementById('updated').textContent = 'Could not load data.json — ' + err; });
 </script>
 </body>
 </html>
