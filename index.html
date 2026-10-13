@@ -64,6 +64,9 @@
   .tile .num{font-family:var(--font-mono); font-weight:600; font-size:20px; font-variant-numeric:tabular-nums; margin-top:4px;}
   .tile .who{font-size:13px; color:var(--text-2); margin-top:3px;}
   .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .table-wrap.tall{max-height:620px; overflow:auto;}
+  .table-wrap.tall thead th{position:sticky; top:0; z-index:2; background:var(--surface);}
+  select{font:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); max-width:100%;}
   table{width:100%; border-collapse:collapse; font-size:13px;}
   th,td{padding:7px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border-soft);}
   th:first-child,td:first-child,th.l,td.l{text-align:left;}
@@ -167,7 +170,7 @@
   <section class="panel">
     <div class="panel-head">
       <h2>Manager leaderboard</h2>
-      <span class="note" id="boardNote">Hover any number to see what's in it. Click a manager to focus the page on them.</span>
+      <span class="note" id="boardNote">Hover any number to see what's in it.</span>
     </div>
     <div class="table-wrap"><table id="board"><thead></thead><tbody></tbody></table></div>
   </section>
@@ -180,23 +183,21 @@
     <div class="table-wrap"><table class="heat" id="heat"><thead></thead><tbody></tbody></table></div>
   </section>
 
-  <div class="panel-head" style="margin:4px 0 -4px">
-    <h2 id="cardsTitle">Transactions that mattered</h2>
-    <span id="focus"></span>
-  </div>
-  <div class="cards">
-    <section class="panel"><h3>Best pickups</h3><ul class="list" id="bestList"></ul></section>
-    <section class="panel"><h3>Early calls</h3><ul class="list" id="earlyList"></ul></section>
-    <section class="panel"><h3>Biggest regrets</h3><ul class="list" id="regretList"></ul></section>
-    <section class="panel"><h3>Worst FAB spends</h3><ul class="list" id="bustList"></ul></section>
-  </div>
-
   <section class="panel">
     <div class="panel-head">
-      <h2>Every pickup</h2>
-      <div class="toolbar"><input type="search" id="q" placeholder="Search player or manager"></div>
+      <h2>Pickups</h2>
+      <div class="toolbar">
+        <div class="segmented" id="timSeg" aria-label="Timing">
+          <button data-v="all" aria-pressed="true">All</button>
+          <button data-v="early" aria-pressed="false">Early calls</button>
+          <button data-v="chase" aria-pressed="false">Chases</button>
+        </div>
+        <select id="mgrSel" aria-label="Manager"></select>
+        <input type="search" id="q" placeholder="Search player">
+      </div>
     </div>
-    <div class="table-wrap"><table id="adds"><thead></thead><tbody></tbody></table></div>
+    <div class="note" id="addsNote" style="margin:-4px 0 8px">Click any column to sort: PAR for best pickups, Regret for biggest regrets, Bid for FAB spends. Hover for the weeks behind a number.</div>
+    <div class="table-wrap tall"><table id="adds"><thead></thead><tbody></tbody></table></div>
     <button class="more" id="moreBtn" hidden>Show more</button>
   </section>
 
@@ -234,7 +235,7 @@ const PALETTE_DARK  = ['#3b8ff4','#f64063','#e85d25','#c27e26','#a68e26','#6ea12
 const GROUPS = { flex: new Set(['RB','WR','TE']), stream: new Set(['QB','K','DEF']) };
 const GROUP_HINT = { flex:'FLEX = RB, WR, TE', stream:'Streamers = QB, K, DEF', all:'All positions' };
 let EDGE = 3, SPIKE = 8;
-const state = { season:'all', group:'flex', basis:'st', type:'all', sortKey:'par', sortDir:'desc', addSortKey:'v', addSortDir:'desc', focus:null, q:'', limit:100 };
+const state = { season:'all', group:'flex', basis:'st', type:'all', sortKey:'par', sortDir:'desc', addSortKey:'v', addSortDir:'desc', focus:null, tim:'all', q:'', limit:400 };
 const TOUCH = matchMedia('(hover: none)').matches;
 let DATA = null, TIPS = [];
 
@@ -347,7 +348,7 @@ function renderHead(table, cols, key, dir, onSort){
   table.querySelector('thead').innerHTML = '<tr>' + cols.map(c => `<th class="${c.cls||''}" data-k="${c.k}" ${c.k===key?`data-dir="${dir}"`:''}${c.h?tipAttr(()=>esc(c.h)):''}>${c.l}</th>`).join('') + '</tr>';
   table.querySelectorAll('th').forEach(th => th.addEventListener('click', () => onSort(th.dataset.k)));
 }
-const ASC_FIRST = new Set(['m','regret','chase','pl','dropped']);
+const ASC_FIRST = new Set(['m','regret','chase','pl','dropped','tim']);
 
 function renderBoard(){
   const rows = aggregate().sort(sorter(state.sortKey, state.sortDir));
@@ -363,10 +364,6 @@ function renderBoard(){
     const txt = v==null ? '—' : c.sg ? sgn(v, c.d) : (c.pre||'') + fmt(v, c.d);
     return `<td class="${c.sg ? cls(v) : ''}"${tipAttr(() => BOARD_TIPS[c.k](r))}>${txt}</td>`;
   }).join('') + '</tr>').join('');
-  tbl.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', ev => {
-    if(TOUCH && ev.target.closest('td[data-t]')) return;
-    setFocus(state.focus===tr.dataset.m ? null : tr.dataset.m);
-  }));
   renderTiles(rows);
 }
 
@@ -382,7 +379,7 @@ function renderTiles(rows){
   const regret = D.slice().sort((a,b)=>regretOf(b)-regretOf(a))[0];
   const bust = busts(A)[0];
   const t = [];
-  if(king) t.push({lbl:'Waiver king', num:`${sgn(king.par,0)} PAR`, who:`${mgrHtml(king.m)} <span class="muted">${sgn(king.parWk,1)}/wk</span>`, tip:()=>BOARD_TIPS.par(king)});
+  if(king) t.push({lbl: state.type==='W' ? 'FAB king' : state.type==='F' ? 'Free agent king' : 'Waiver king', num:`${sgn(king.par,0)} PAR`, who:`${mgrHtml(king.m)} <span class="muted">${sgn(king.parWk,1)}/wk</span>`, tip:()=>BOARD_TIPS.par(king)});
   if(best) t.push({lbl:'Best pickup', num:`${sgn(val(best))} PAR`, who:`${esc(best.pl)} · ${mgrHtml(best.m)} <span class="muted">${best.s}</span>`, tip:()=>addWeeksTip(best)});
   if(early) t.push({lbl:'Best early call', num:`${sgn(val(early))} PAR`, who:`${esc(early.pl)} · ${mgrHtml(early.m)} <span class="muted">${early.s}</span>`, tip:()=>addWeeksTip(early)});
   if(regret && regretOf(regret)>0) t.push({lbl:'Biggest regret', num:`${sgn(regret.sbp)} PAR`, who:`${esc(regret.pl)}, dropped by ${mgrHtml(regret.m)} <span class="muted">${regret.s}</span>`, tip:()=>regretTip(regret)});
@@ -420,33 +417,14 @@ function renderHeat(){
 function li(main, ctx, value, sub, tip){
   return `<li${tipAttr(tip)}><span class="main">${main}<span class="ctx">${ctx}</span></span><span class="val">${value}${sub?`<small>${sub}</small>`:''}</span></li>`;
 }
-function renderCards(){
-  const f = x => !state.focus || x.m===state.focus;
-  const A = adds().filter(f), D = drops().filter(f);
-  const who = m => state.focus ? '' : `${esc(m)} · `;
-  const empty = '<li class="empty">Nothing in this view.</li>';
-  const pl = x => `<span class="pos-pill">${esc(x.pos)}</span>${esc(x.pl)}`;
-  document.getElementById('bestList').innerHTML = A.filter(a=>val(a)>0).sort((a,b)=>val(b)-val(a)).slice(0,8)
-    .map(a => li(pl(a), `${who(a.m)}${a.s} wk${a.w} · ${a.ty==='W'?'$'+a.b:'FA'}`, `<span class="good">${sgn(val(a))}</span>`, `${a.ws} wks started`, ()=>addWeeksTip(a))).join('') || empty;
-  document.getElementById('earlyList').innerHTML = A.filter(a=>a.tim==='early').sort((a,b)=>val(b)-val(a)).slice(0,8)
-    .map(a => li(pl(a), `${who(a.m)}${a.s} wk${a.w} · ${a.ty==='W'?'$'+a.b:'FA'}`, `<span class="${cls(val(a))}">${sgn(val(a))}</span>`, `${sgn(a.pre)} → ${sgn(a.post)} PAR/G`, ()=>addWeeksTip(a))).join('') || empty;
-  document.getElementById('regretList').innerHTML = D.filter(d=>regretOf(d)>0).sort((a,b)=>b.sbp-a.sbp).slice(0,8)
-    .map(d => li(pl(d), `${who(d.m)}dropped ${d.s} wk${d.w}`, `<span class="bad">${sgn(d.sbp)}</span>`, `for ${whoList(d)}`, ()=>regretTip(d))).join('') || empty;
-  document.getElementById('bustList').innerHTML = busts(A).slice(0,8)
-    .map(a => li(pl(a), `${who(a.m)}${a.s} wk${a.w}`, `$${a.b} → <span class="${cls(val(a))}">${sgn(val(a),0)}</span>`, `${a.ws} wks started · ${endText(a)}`, ()=>addWeeksTip(a))).join('') || empty;
-  document.getElementById('cardsTitle').textContent = state.focus ? `${state.focus}'s transactions that mattered` : 'Transactions that mattered';
-  document.getElementById('focus').innerHTML = state.focus ? `<span class="filter-pill">${mgrHtml(state.focus)}<button aria-label="Clear manager focus" id="clearFocus">✕</button></span>` : '<span class="note">click a manager in the leaderboard to focus</span>';
-  const cf = document.getElementById('clearFocus'); if(cf) cf.onclick = () => setFocus(null);
-}
-
 const ADD_COLS = [
   {k:'pl', l:'Player', cls:'l'}, {k:'m', l:'Manager', cls:'l'}, {k:'s', l:'Season'}, {k:'w', l:'Wk'},
-  {k:'b', l:'Bid'}, {k:'v', l:'PAR'}, {k:'pts', l:'Pts'}, {k:'dropped', l:'Dropped', cls:'l'}, {k:'rg', l:'Regret'},
+  {k:'b', l:'Bid'}, {k:'v', l:'PAR'}, {k:'pts', l:'Pts'}, {k:'tim', l:'Timing', cls:'l'}, {k:'post', l:'PAR/G before → after'}, {k:'dropped', l:'Dropped', cls:'l'}, {k:'rg', l:'Regret'},
 ];
 function renderAdds(){
   const q = state.q.toLowerCase();
-  let rows = adds().filter(a => (!state.focus || a.m===state.focus) && (!q || a.pl.toLowerCase().includes(q) || a.m.toLowerCase().includes(q) || (a.dr||[]).some(d=>d.pl.toLowerCase().includes(q))))
-    .map(a => ({...a, v: val(a), pts: state.basis==='st' ? a.st : a.ro, rg: sum(a.dr||[], regretOf), dropped: (a.dr||[]).map(d=>d.pl).join(', '), bsort: a.ty==='W' ? a.b : -1}));
+  let rows = adds().filter(a => (!state.focus || a.m===state.focus) && (state.tim==='all' || a.tim===state.tim) && (!q || a.pl.toLowerCase().includes(q) || (a.dr||[]).some(d=>d.pl.toLowerCase().includes(q))))
+    .map(a => ({...a, v: val(a), pts: state.basis==='st' ? a.st : a.ro, rg: sum(a.dr||[], regretOf), dropped: (a.dr||[]).map(d=>d.pl).join(', '), bsort: a.ty==='W' ? a.b : -1, tim: a.tim || ''}));
   rows.sort(sorter(state.addSortKey==='b' ? 'bsort' : state.addSortKey, state.addSortDir));
   const tbl = document.getElementById('adds');
   renderHead(tbl, ADD_COLS.map(c=>c.k==='v'?{...c,l:state.basis==='st'?'Started PAR':'Rostered PAR'}:c.k==='pts'?{...c,l:state.basis==='st'?'Started pts':'Rostered pts'}:c), state.addSortKey, state.addSortDir, k => {
@@ -457,9 +435,9 @@ function renderAdds(){
     const live = seasonMeta(a.s).finished ? '' : '<span class="tag">live</span>';
     const wk = ()=>addWeeksTip(a);
     const rg = a.dr && a.dr.length ? () => a.dr.map(d => regretTip({...d, s:a.s, w:a.w, m:a.m})).join('<div style="height:8px"></div>') : null;
-    const tt = a.tim ? `<span${tipAttr(()=>timingTip(a))}>${timTag(a)}</span>` : '';
-    return `<tr><td class="l"><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)}${tt}</td><td class="l">${mgrHtml(a.m)}</td><td>${a.s}${live}</td><td>${a.w}</td>
+    return `<tr><td class="l"><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)}</td><td class="l">${mgrHtml(a.m)}</td><td>${a.s}${live}</td><td>${a.w}</td>
       <td>${a.ty==='W'?'$'+a.b:'<span class="muted">FA</span>'}</td><td class="${cls(a.v)}"${tipAttr(wk)}>${sgn(a.v)}</td><td class="muted"${tipAttr(wk)}>${fmt(a.pts)}</td>
+      <td class="l"${a.tim?tipAttr(()=>timingTip(a)):''}>${a.tim?timTag(a):'<span class="muted">—</span>'}</td><td class="muted"${a.tim?tipAttr(()=>timingTip(a)):''}>${a.pre==null&&a.post==null?'—':sgn(a.pre)+' → '+sgn(a.post)}</td>
       <td class="l muted"${rg?tipAttr(rg):''}>${esc(a.dropped)||'—'}</td><td class="${a.rg>0?'bad':'muted'}"${rg?tipAttr(rg):''}>${a.rg?fmt(a.rg):'—'}</td></tr>`;
   }).join('') || `<tr><td class="l empty" colspan="${ADD_COLS.length}">No pickups match.</td></tr>`;
   const more = document.getElementById('moreBtn');
@@ -476,11 +454,11 @@ function renderRepl(){
   document.getElementById('replTable').innerHTML = `<thead><tr><th class="l">Season</th><th>Teams</th>${pos.map(p=>`<th>${p}</th>`).join('')}</tr></thead><tbody>${rows}</tbody>`;
 }
 
-function setFocus(m){ state.focus = m; state.limit = 100; renderAll(); }
+function setFocus(m){ state.focus = m || null; state.limit = 400; renderAll(); }
 function renderAll(){
   TIPS = [];
   document.getElementById('hint').textContent = `${GROUP_HINT[state.group]} · ${state.basis==='st'?'PAR from weeks in the starting lineup':'PAR from every rostered week he played'}`;
-  renderBoard(); renderHeat(); renderCards(); renderAdds(); renderRepl();
+  renderBoard(); renderHeat(); renderAdds(); renderRepl();
 }
 
 /* ---------- tooltip plumbing ---------- */
@@ -517,7 +495,7 @@ addEventListener('scroll', () => { if(TOUCH) hideTip(); }, {passive:true});
 /* ---------- boot ---------- */
 function wireSeg(id, key){
   document.querySelectorAll(`#${id} button`).forEach(b => b.onclick = () => {
-    state[key] = b.dataset.v; state.limit = 100;
+    state[key] = b.dataset.v; state.limit = 400;
     document.querySelectorAll(`#${id} button`).forEach(x => x.setAttribute('aria-pressed', x===b));
     renderAll();
   });
@@ -533,15 +511,23 @@ fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
   const chips = document.getElementById('seasonChips');
   chips.innerHTML = ['all', ...d.seasons.map(s=>s.s)].map(o => { const s = d.seasons.find(x=>x.s===o); return `<button class="chip" data-v="${o}" aria-pressed="${o==='all'}">${o==='all'?'All seasons':o}${s&&!s.finished?'*':''}</button>`; }).join('');
   chips.querySelectorAll('.chip').forEach(c => c.onclick = () => {
-    state.season = c.dataset.v; state.limit = 100;
+    state.season = c.dataset.v; state.limit = 400;
     chips.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x===c));
     renderAll();
   });
-  document.getElementById('q').oninput = e => { state.q = e.target.value; state.limit = 100; renderAdds(); };
-  document.getElementById('moreBtn').onclick = () => { state.limit += 200; renderAdds(); };
+  document.getElementById('q').oninput = e => { state.q = e.target.value; state.limit = 400; renderAdds(); };
+  document.getElementById('moreBtn').onclick = () => { state.limit += 400; renderAdds(); };
+  const ms = document.getElementById('mgrSel');
+  ms.innerHTML = '<option value="">All managers</option>' + [...d.managers].sort().map(m=>`<option>${esc(m)}</option>`).join('');
+  ms.onchange = () => setFocus(ms.value);
+  document.querySelectorAll('#timSeg button').forEach(b => b.onclick = () => {
+    state.tim = b.dataset.v; state.limit = 400;
+    document.querySelectorAll('#timSeg button').forEach(x => x.setAttribute('aria-pressed', x===b));
+    renderAdds();
+  });
   wireSeg('groupSeg','group'); wireSeg('basisSeg','basis'); wireSeg('typeSeg','type');
   const inprog = d.seasons.find(s=>!s.finished);
-  if(inprog) document.getElementById('boardNote').textContent = `* ${inprog.s} is in progress (through week ${inprog.done}). Hover any number to see what's in it; click a manager to focus the page on them.`;
+  if(inprog) document.getElementById('boardNote').textContent = `* ${inprog.s} is in progress (through week ${inprog.done}). Hover any number to see what's in it.`;
   renderAll();
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', renderAll);
 }).catch(err => { document.getElementById('updated').textContent = 'Could not load data.json — ' + err; });

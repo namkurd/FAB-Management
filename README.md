@@ -31,7 +31,7 @@ Filters: season, **positions** (FLEX = RB/WR/TE, the default · Streamers = QB/K
 
 **Replacement level** (per season × position): cutoff rank = average number of that position actually started per week + bench depth (½ per team at QB/TE/K/DEF, 1 at RB/WR); replacement PPG = PPG of the player at that rank (league scoring, all NFL players, ≥ 40% of games). Tables are read from the Trade Network's published `data.json`; they're rebuilt locally with the same code only if that's unreachable or behind.
 
-Page sections: leaderboard → PAR by season (manager × season heatmap) → transactions that mattered (best pickups, early calls, biggest regrets, worst FAB spends; click a manager to focus) → every pickup → method with the replacement table.
+Page sections: leaderboard → PAR by season (manager × season heatmap) → one sortable, scrollable pickups table (filter by timing: early calls / chases, by manager and by player; sort by PAR for best pickups, Regret for biggest regrets, Bid for FAB spends) → method with the replacement table.
 
 ## Sit / start (`lineup.html`)
 
