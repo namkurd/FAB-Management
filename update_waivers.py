@@ -286,11 +286,23 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
         for pid, rid in (t.get("drops") or {}).items():
             departures.setdefault((rid, str(pid)), []).append((txn_time(t), t["_wk"], t["type"]))
 
-    def started_by_others(pid, rid, from_wk):
+    # acquisitions: (rid, pid) -> [(ts, wk)] for every add or trade-in, so a drop's window can end
+    # when the same manager gets the player back (no double counting across drop windows)
+    acquired = {}
+    for t in txns:
+        if t.get("status") != "complete":
+            continue
+        for pid, rid in (t.get("adds") or {}).items():
+            acquired.setdefault((rid, str(pid)), []).append((txn_time(t), t["_wk"]))
+
+    def started_by_others(pid, rid, from_wk, drop_ts):
         """Regular-season weeks the dropped player spent in ANOTHER manager's starting
-        lineup: [[week, points, manager], ...]."""
+        lineup between this drop and the next time this manager gets him back:
+        [[week, points, manager], ...]."""
         out = []
-        for wk in range(from_wk, min(done, reg_end) + 1):
+        back = next((w for ts2, w in sorted(acquired.get((rid, pid), [])) if ts2 > drop_ts), None)
+        last_wk = min(done, reg_end) if back is None else min(done, reg_end, back - 1)
+        for wk in range(from_wk, last_wk + 1):
             for r2, (pl, st, pts) in mx.get(wk, {}).items():
                 if r2 != rid and pid in st:
                     out.append([wk, round(pts.get(pid) or 0, 2), rid_name.get(r2, f"Team {r2}")])
@@ -315,7 +327,7 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
         my_drops = [str(p) for p, r in (t.get("drops") or {}).items() if r == rid]
         drop_recs = []
         for pid in my_drops:
-            sbl = started_by_others(pid, rid, wk + 1)
+            sbl = started_by_others(pid, rid, wk + 1, ts)
             lb = label(pid)
             rp = rppg.get(lb["p"])
             rec = {"s": season, "w": wk, "m": mgr, "pid": pid, "pl": lb["n"], "pos": lb["p"],

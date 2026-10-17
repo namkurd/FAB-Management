@@ -26,7 +26,7 @@ Filters: season, **positions** (FLEX = RB/WR/TE, the default · QB · DEF/K · A
 | Early calls | PAR/G ≤ 0 in the 3 weeks before the pickup counted, ≥ +3 in the 4 weeks after, and held ≥ 2 of those weeks |
 | Chases | One spike game right before the pickup (≥ +8 PAR), the 3 weeks before that ≤ 0 PAR/G (or no games), ≤ 0 PAR/G in the 4 weeks after |
 | FAB spent / PAR per $ | Sum of winning bids; PAR from claims that cost $1+ ÷ dollars spent on them ($0 claims left out) |
-| Regret | Started PAR that dropped players produced in *other* managers' lineups that season (floored at 0 per player) |
+| Regret | Started PAR that dropped players produced in *other* managers' lineups, from the drop until you re-acquire him (floored at 0 per drop; a re-dropped player's windows never overlap) |
 | Net | PAR − regret |
 
 **Replacement level** (per season × position): cutoff rank = average number of that position actually started per week + bench depth (½ per team at QB/TE/K/DEF, 1 at RB/WR); replacement PPG = PPG of the player at that rank (league scoring, all NFL players, ≥ 40% of games). Tables are read from the Trade Network's published `data.json`; they're rebuilt locally with the same code only if that's unreachable or behind.
