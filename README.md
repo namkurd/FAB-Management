@@ -16,7 +16,7 @@ Only completed weeks are read or cached. Sleeper pre-generates future matchups w
 
 Everything is measured in **points above replacement (PAR)**, using the exact definition and the same replacement tables as the Trade Network (`namkurd/SleeperTradeNodes`). See `par.py`.
 
-Filters: season, **positions** (FLEX = RB/WR/TE, the default · Streamers = QB/K/DEF · All), **PAR basis** (Started / Rostered) and pickup type (FAB claims / free agents). Hovering any number shows the pickups, bids or weeks behind it.
+Filters: season, **positions** (FLEX = RB/WR/TE, the default · QB · DEF/K · All), **PAR basis** (Started / Rostered) and pickup type (FAB claims / free agents). Hovering any number shows the pickups, bids or weeks behind it.
 
 | Metric | Definition |
 |---|---|
@@ -25,7 +25,7 @@ Filters: season, **positions** (FLEX = RB/WR/TE, the default · Streamers = QB/K
 | Difference-makers | Pickups worth 25+ started PAR |
 | Early calls | PAR/G ≤ 0 in the 3 weeks before the pickup counted, ≥ +3 in the 4 weeks after, and held ≥ 2 of those weeks |
 | Chases | One spike game right before the pickup (≥ +8 PAR), the 3 weeks before that ≤ 0 PAR/G (or no games), ≤ 0 PAR/G in the 4 weeks after |
-| FAB spent / PAR per $ | Sum of winning bids; PAR from FAB claims ÷ dollars spent |
+| FAB spent / PAR per $ | Sum of winning bids; PAR from claims that cost $1+ ÷ dollars spent on them ($0 claims left out) |
 | Regret | Started PAR that dropped players produced in *other* managers' lineups that season (floored at 0 per player) |
 | Net | PAR − regret |
 
