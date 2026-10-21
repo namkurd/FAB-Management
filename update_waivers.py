@@ -295,13 +295,24 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
         for pid, rid in (t.get("adds") or {}).items():
             acquired.setdefault((rid, str(pid)), []).append((txn_time(t), t["_wk"]))
 
+    # every real drop (not a trade) of each player by anyone, to hand regret down the chain
+    pid_drops = {}
+    for (r_, p_), lst in departures.items():
+        for ts_, wk_, ty_ in lst:
+            if ty_ != "trade":
+                pid_drops.setdefault(p_, []).append((ts_, wk_, r_))
+
     def started_by_others(pid, rid, from_wk, drop_ts):
         """Regular-season weeks the dropped player spent in ANOTHER manager's starting
-        lineup between this drop and the next time this manager gets him back:
+        lineup between this drop and the earlier of: this manager getting him back, or a different manager dropping him:
         [[week, points, manager], ...]."""
         out = []
         back = next((w for ts2, w in sorted(acquired.get((rid, pid), [])) if ts2 > drop_ts), None)
         last_wk = min(done, reg_end) if back is None else min(done, reg_end, back - 1)
+        # once a DIFFERENT manager drops him, the regret from there on belongs to that manager
+        nxt = min((w for ts2, w, r2 in pid_drops.get(pid, []) if r2 != rid and ts2 > drop_ts), default=None)
+        if nxt is not None:
+            last_wk = min(last_wk, nxt)
         for wk in range(from_wk, last_wk + 1):
             for r2, (pl, st, pts) in mx.get(wk, {}).items():
                 if r2 != rid and pid in st:
