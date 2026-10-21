@@ -230,11 +230,63 @@ def season_bundle(lg, players):
                                          if st and pid in players})
         time.sleep(0.05)
 
-    return dict(season=season, league_id=lid, done=done, finished=finished, reg_end=reg_end, proj=proj,
+    bracket = cached(f"bracket_{lid}.json", lambda: sleeper_get(f"/league/{lid}/winners_bracket") or [], finished) or []
+    b = dict(season=season, league_id=lid, done=done, finished=finished, reg_end=reg_end, proj=proj, bracket=bracket,
+             n_playoff=settings.get("playoff_teams") or 4,
                 budget=settings.get("waiver_budget") or 0, users=users or [],
                 rosters=rosters or [], txns=txns, matchups=matchups, pts=pts,
                 slots=[x for x in (lg.get("roster_positions") or []) if x not in ("BN", "IR", "TAXI")],
                 teams=lg.get("total_rosters") or len(rosters or []), playoff_start=reg_end + 1)
+    b["stand"] = reg_standings(b)
+    b["alive"], b["po_rids"], b["po_last"] = playoff_alive(b)
+    return b
+
+
+def reg_standings(b):
+    """Regular-season record, points for and Rumbles per roster id (9 for a win + 1 per team outscored),
+    ranked like the league's standings: Rumbles, then points for. {rid: {w, l, t, pf, rum, rank}}."""
+    st = {r["roster_id"]: {"w": 0, "l": 0, "t": 0, "pf": 0.0, "rum": 0} for r in b["rosters"]}
+    for wk in range(1, min(b["done"], b["reg_end"]) + 1):
+        rows = [e for e in (b["matchups"].get(wk) or []) if e["roster_id"] in st]
+        if not any(e.get("points") for e in rows):
+            continue
+        for e in rows:
+            me = e.get("points") or 0
+            opp = next((o for o in rows if o is not e and o.get("matchup_id") is not None
+                        and o.get("matchup_id") == e.get("matchup_id")), None)
+            x = st[e["roster_id"]]
+            x["pf"] += me
+            x["rum"] += sum(1 for o in rows if o is not e and me > (o.get("points") or 0))
+            if opp is not None:
+                op = opp.get("points") or 0
+                key = "w" if me > op else "l" if me < op else "t"
+                x[key] += 1
+                if key == "w":
+                    x["rum"] += RUMBLE_BONUS
+    order = sorted(st, key=lambda r: (-st[r]["rum"], -st[r]["pf"]))
+    for i, r in enumerate(order):
+        st[r]["rank"] = i + 1
+        st[r]["pf"] = round(st[r]["pf"], 2)
+    return st
+
+
+def playoff_alive(b):
+    """Which teams are in the playoffs each week. Sleeper's winners bracket lists them by round
+    (round r is week playoff_start + r - 1); a team is alive from the first playoff week until the
+    round it last appears in (a first-round bye counts). With no bracket (e.g. 2024) the top
+    `playoff_teams` teams by Rumbles are used, with a two-round bracket.
+    Returns ({(rid, week)}, {rid in the playoffs}, {rid: last round})."""
+    last = {}
+    for m in b["bracket"]:
+        for k in ("t1", "t2"):
+            if isinstance(m.get(k), int):
+                last[m[k]] = max(last.get(m[k], 0), m["r"])
+    if not last and b["stand"]:
+        n = b["n_playoff"]
+        last = {r: 2 for r, x in b["stand"].items() if x["rank"] <= n}
+    alive = {(r, b["playoff_start"] + i) for r, lr in last.items() for i in range(lr)
+             if b["playoff_start"] + i <= min(b["done"], LAST_FANTASY_WEEK)}
+    return alive, set(last), last
 
 
 # --------------------------------------------------------------------------- analysis
@@ -244,7 +296,8 @@ def txn_time(t):
     return t.get("created") or t.get("status_updated") or 0
 
 
-def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
+def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl, podium=None):
+    podium = podium or {}
     season, done, reg_end = b["season"], b["done"], b["reg_end"]
     week_pts = b["pts"]                                   # {week: {pid: league pts}} for players who played
     rppg = {pos: row["ppg"] for pos, row in ((repl or {}).get("pos") or {}).items()}
@@ -261,6 +314,30 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
             name = prev_rid_name.get(r["roster_id"], f"Team {r['roster_id']}")
             print(f"  note: {season} roster {r['roster_id']} has no owner - using {name}")
         rid_name[r["roster_id"]] = name
+
+    # Playoff teams for 2021-2025 come from playoff_teams.json (the league's own record, in seed order);
+    # Sleeper's brackets for those years don't match what was played. Seasons without an entry (2026 on)
+    # use Sleeper's winners bracket. Podium/Sacko names come from SleeperAuction's config/playoffs.json.
+    pod = podium.get(str(season)) or {}
+    name2rid = {n: r_ for r_, n in rid_name.items()}
+    seeds = {}
+    listed = PLAYOFF_TEAMS.get(str(season))
+    if listed:
+        b["alive"], b["po_rids"], b["po_last"] = set(), set(), {}
+        podium_rids = {name2rid.get(ALIAS.get(pod.get(k), pod.get(k))) for k in ("champion", "second", "third")}
+        for i, nm in enumerate(listed):
+            r_ = name2rid.get(ALIAS.get(nm, nm))
+            if not r_:
+                print(f"  WARNING playoff_teams.json: {season} '{nm}' is not a manager that season")
+                continue
+            seeds[r_] = i + 1
+            # podium teams played every playoff week; with five teams the other two include a first-round
+            # loser we can't identify, so they count one week (a four-team bracket plays two for everyone)
+            weeks_in = 2 if (r_ in podium_rids or len(listed) == 4) else 1
+            b["po_rids"].add(r_)
+            b["po_last"][r_] = weeks_in
+            b["alive"] |= {(r_, b["playoff_start"] + k) for k in range(weeks_in)
+                           if b["playoff_start"] + k <= min(done, LAST_FANTASY_WEEK)}
 
     # matchup index: wk -> rid -> (players set, starters set, points dict)
     mx = {}
@@ -308,14 +385,14 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
         [[week, points, manager], ...]."""
         out = []
         back = next((w for ts2, w in sorted(acquired.get((rid, pid), [])) if ts2 > drop_ts), None)
-        last_wk = min(done, reg_end) if back is None else min(done, reg_end, back - 1)
+        last_wk = min(done, LAST_FANTASY_WEEK) if back is None else min(done, LAST_FANTASY_WEEK, back - 1)
         # once a DIFFERENT manager drops him, the regret from there on belongs to that manager
         nxt = min((w for ts2, w, r2 in pid_drops.get(pid, []) if r2 != rid and ts2 > drop_ts), default=None)
         if nxt is not None:
             last_wk = min(last_wk, nxt)
         for wk in range(from_wk, last_wk + 1):
             for r2, (pl, st, pts) in mx.get(wk, {}).items():
-                if r2 != rid and pid in st:
+                if r2 != rid and pid in st and (wk <= reg_end or (r2, wk) in b["alive"]):
                     out.append([wk, round(pts.get(pid) or 0, 2), rid_name.get(r2, f"Team {r2}")])
         return out
 
@@ -361,9 +438,9 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
             appeared = False
             for w in range(wk, end_wk + 1):
                 row = mx.get(w, {}).get(rid)
-                if row is None:              # e.g. eliminated from playoffs - no matchup row
-                    if w > reg_end:
-                        break
+                if w > reg_end and (rid, w) not in b["alive"]:
+                    break                    # out of the playoffs (or never in them): later weeks don't count
+                if row is None:
                     continue
                 pl, st, pts = row
                 if pid not in pl:
@@ -384,8 +461,7 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
                         po_st += p
                 else:
                     wbn += 1
-                if w <= reg_end:
-                    ros += p
+                ros += p
             if dep:
                 how = "traded" if dep[2] == "trade" else "dropped"
             elif b["finished"] or done >= reg_end:
@@ -394,7 +470,7 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
                 how = "active"
             # points above replacement (same definition as the Trade Network - see par.py)
             rp = rppg.get(lb["p"])
-            reg = [x for x in weeks if x[0] <= reg_end]
+            reg = weeks                       # regular season, plus playoff weeks his team was in
             par_st = sum(x[1] - rp for x in reg if x[2]) if rp is not None else None
             par_ro = sum(x[1] - rp for x in reg if x[3]) if rp is not None else None
             # timing: PAR per game in the weeks just before the first counted week vs. right after
@@ -420,7 +496,7 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
                                                  # sustained before it, and nothing after
             rec = {"s": season, "w": wk, "m": mgr, "ty": typ, "pid": pid, "pl": lb["n"],
                    "pos": lb["p"], "tm": lb["t"], "b": bid, "ts": ts,
-                   "st": round(reg_st, 2), "po": round(po_st, 2), "ro": round(ros, 2),
+                   "st": round(reg_st + po_st, 2), "po": round(po_st, 2), "ro": round(ros, 2),
                    "rp": rp, "par": round(par_st, 1) if par_st is not None else None,
                    "parR": round(par_ro, 1) if par_ro is not None else None,
                    "pre": pre_g, "post": post_g, "pren": pre_n, "postn": post_n, "tim": tim,
@@ -445,13 +521,39 @@ def analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl):
                 traded[s_] = traded.get(s_, 0) - amt
                 traded[r_] = traded.get(r_, 0) + amt
     teams = []
+    stand = b["stand"]
+    avg_pf = (sum(x["pf"] for x in stand.values()) / len(stand)) if stand else 0
+    pod = podium.get(str(season)) or {}
+    bk = {m.get("p"): m for m in b["bracket"] if m.get("p")}
     for r in b["rosters"]:
         n = rid_name[r["roster_id"]]
         s = r.get("settings") or {}
+        x = stand.get(r["roster_id"]) or {"w": 0, "l": 0, "t": 0, "pf": 0, "rum": 0, "rank": None}
+        pw = sum(1 for (rr, ww) in b["alive"] if rr == r["roster_id"])
+        # how the season ended: the league's own podium/sacko record, else Sleeper's bracket
+        place = None
+        for key, nm in (("champion", "Champion"), ("second", "Runner-up"), ("third", "3rd place"),
+                        ("fourth", "4th place"), ("sacko", "Sacko")):
+            if (pod.get(key) and ALIAS.get(pod[key], pod[key]) == n):
+                place = nm
+        if place is None and b["finished"]:
+            fin, thr = bk.get(1) or {}, bk.get(3) or {}
+            if listed:
+                place = ("4th place" if len(listed) == 4 else "Made the playoffs") if r["roster_id"] in b["po_rids"] else "Missed the playoffs"
+            elif fin.get("w") == r["roster_id"]: place = "Champion"
+            elif fin.get("l") == r["roster_id"]: place = "Runner-up"
+            elif thr.get("w") == r["roster_id"]: place = "3rd place"
+            elif thr.get("l") == r["roster_id"]: place = "4th place"
+            elif r["roster_id"] in b["po_rids"]: place = "Made the playoffs"
+            else: place = "Missed the playoffs"
+        if not b["finished"]:
+            place = "In progress"
         teams.append({"m": n, "rid": r["roster_id"], "used": s.get("waiver_budget_used", 0),
                       "bids": bids.get(n, 0), "faab_traded": traded.get(n, 0),
                       "faab_ok": bids.get(n, 0) - traded.get(n, 0) == s.get("waiver_budget_used", 0),
-                      "wins": s.get("wins", 0), "losses": s.get("losses", 0),
+                      "wins": x["w"], "losses": x["l"], "ties": x["t"], "pw": pw, "weeks": min(done, reg_end) + pw,
+                      "pf": round(x["pf"], 1), "pfp": round(x["pf"] / avg_pf * 100) if avg_pf else None,
+                      "rank": x.get("rank"), "rumbles": x["rum"], "inPO": r["roster_id"] in b["po_rids"], "seed": seeds.get(r["roster_id"]), "finish": place,
                       "fpts": round((s.get("fpts") or 0) + (s.get("fpts_decimal") or 0) / 100, 2)})
 
     meta = {"rid_name": rid_name, "s": season, "league_id": b["league_id"], "done": done, "finished": b["finished"],
@@ -468,9 +570,9 @@ def summarize(seasons, adds, drops):
     out = {}
     for meta in seasons:
         s = meta["s"]
-        weeks = min(meta["done"], meta["reg_end"])
         for t in meta["teams"]:
             m = t["m"]
+            weeks = t["weeks"]
             for g in ("flex", "stream", "all"):
                 ok = (lambda pos: True) if g == "all" else (lambda pos, g=g: pos in GROUPS[g])
                 A = [a for a in adds if a["s"] == s and a["m"] == m and ok(a["pos"])]
@@ -616,6 +718,10 @@ def lineup_decisions(b, repl, rid_name, players):
     return out, calls
 
 
+PLAYOFF_TEAMS = {k: v for k, v in json.loads((HERE / "playoff_teams.json").read_text()).items() if not k.startswith("_")} \
+    if (HERE / "playoff_teams.json").exists() else {}
+PLAYOFFS_URL = "https://raw.githubusercontent.com/namkurd/SleeperAuction/main/config/playoffs.json"
+ALIAS = {"Rohaan": "Haan"}            # the old sheet's name for Haan
 RUMBLE_BONUS = 9      # league standings: 9 for a head-to-head win + 1 per team outscored that week
 
 
@@ -656,6 +762,11 @@ def main():
             uid_name[u["user_id"]] = manager_name(u)
 
     published = par.published_tables(session)
+    podium = {}
+    try:
+        podium = session.get(PLAYOFFS_URL, timeout=60).json()
+    except Exception as e:  # noqa: BLE001
+        print(f"warning: playoff podium record unavailable ({e}); using Sleeper's bracket")
     seasons, adds, drops, lineup, calls, scores = [], [], [], [], [], {}
     prev_rid_name = {}
     for b in bundles:
@@ -669,7 +780,7 @@ def main():
             repl = {**repl, "src": src}
             print(f"  {b['season']} replacement ({src}, {repl['weeks']} wks): " +
                   ", ".join(f"{p} {r['rank']}@{r['ppg']}" for p, r in repl["pos"].items()))
-        meta, a, d = analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl)
+        meta, a, d = analyze_season(b, players, uid_name, kickoffs, prev_rid_name, repl, podium)
         prev_rid_name = meta.pop("rid_name")
         miss, good = lineup_decisions(b, repl, prev_rid_name, players)
         lineup += miss

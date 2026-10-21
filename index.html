@@ -11,7 +11,7 @@
     --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1;
     --text:#131B24; --text-2:#4B5867; --text-3:#7C8896;
     --border:#D7DEE4; --border-soft:#E4E9ED;
-    --good:#1A7F45; --bad:#C4314B;
+    --good:#1A7F45; --bad:#C4314B; --accent:#0E9F8A; --on-accent:#FFFFFF;
     --heat:21,126,237; --heatneg:196,49,75;
     --shadow:0 1px 2px rgba(19,27,36,.06), 0 6px 20px rgba(19,27,36,.06);
     --font-display:'IBM Plex Sans Condensed',system-ui,sans-serif;
@@ -23,7 +23,7 @@
       --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
       --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
       --border:#26323F; --border-soft:#202B36;
-      --good:#3FBF78; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
+      --good:#3FBF78; --accent:#3CCBB0; --on-accent:#06251F; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
       --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
     }
   }
@@ -31,7 +31,7 @@
     --bg:#0E1520; --surface:#16202C; --surface-2:#1D2833;
     --text:#E8EDF2; --text-2:#A8B4C0; --text-3:#74818F;
     --border:#26323F; --border-soft:#202B36;
-    --good:#3FBF78; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
+    --good:#3FBF78; --accent:#3CCBB0; --on-accent:#06251F; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box;}
@@ -45,15 +45,33 @@
   .sub{margin:0; color:var(--text-2); font-size:13.5px; max-width:62ch;}
   .meta{font-family:var(--font-mono); font-size:11.5px; color:var(--text-3);}
   .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
-  .chips{display:flex; flex-wrap:wrap; gap:6px;}
-  .chip{appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2);
-    font-family:var(--font-mono); font-size:12px; font-weight:500; padding:6px 10px; border-radius:999px; cursor:pointer;}
-  .chip[aria-pressed="true"]{background:var(--text); color:var(--bg); border-color:var(--text);}
   .segmented{display:flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface);}
   .segmented button{appearance:none; border:none; background:transparent; color:var(--text-2); font-family:var(--font-body);
     font-weight:600; font-size:13px; padding:7px 12px; cursor:pointer;}
   .segmented button + button{border-left:1px solid var(--border);}
-  .segmented button[aria-pressed="true"]{background:var(--surface-2); color:var(--text);}
+  .segmented button[aria-pressed="true"]{background:var(--accent); color:var(--on-accent); box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);}
+  .segmented button:not([aria-pressed="true"]):hover{background:var(--surface-2); color:var(--text);}
+  .seasons-card{display:flex; flex-direction:column; gap:6px; background:var(--surface); border:1px solid var(--border-soft); border-radius:14px; box-shadow:var(--shadow); padding:12px 18px 8px; width:100%; max-width:640px;}
+  .seasons-head{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .seasons-head span{color:var(--text-2); font-size:14px;} .seasons-head b{color:var(--text); font-size:15px; margin-left:4px;}
+  .seasons-head button{appearance:none; border:1px solid var(--border); background:var(--surface-2); color:var(--text-3); font:inherit; font-size:12px; font-weight:600; padding:5px 10px; border-radius:8px; cursor:pointer;}
+  .seasons-head button:not(:disabled){color:var(--text); border-color:var(--accent);}
+  .seasons-head button:disabled{opacity:.6; cursor:default;}
+  .range{position:relative; height:30px; margin:2px 11px 0;}
+  .range .track,.range .fill{position:absolute; top:13px; height:4px; border-radius:2px;}
+  .range .track{left:0; right:0; background:var(--border);}
+  .range .fill{background:var(--accent);}
+  .range .dot{position:absolute; top:11px; width:8px; height:8px; margin-left:-4px; border-radius:50%; background:var(--surface); border:2px solid var(--border);}
+  .range .dot.on{border-color:var(--accent); background:var(--accent);}
+  .range input{position:absolute; left:-11px; width:calc(100% + 22px); top:0; height:30px; margin:0; background:none; pointer-events:none; -webkit-appearance:none; appearance:none;}
+  .range input::-webkit-slider-runnable-track{background:transparent; height:30px;}
+  .range input::-moz-range-track{background:transparent; height:30px;}
+  .range input::-webkit-slider-thumb{-webkit-appearance:none; pointer-events:auto; width:22px; height:22px; margin-top:4px; border-radius:50%; background:#fff; border:4px solid var(--accent); cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.35);}
+  .range input::-moz-range-thumb{pointer-events:auto; width:14px; height:14px; border-radius:50%; background:#fff; border:4px solid var(--accent); cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.35);}
+  .range input:focus-visible::-webkit-slider-thumb{outline:2px solid var(--text); outline-offset:2px;}
+  .range-labels{position:relative; height:20px; margin:0 11px;}
+  .range-labels button{position:absolute; transform:translateX(-50%); appearance:none; border:none; background:none; padding:2px 3px; font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--text-3); cursor:pointer;}
+  .range-labels button.in{color:var(--text);}
   .hint{font-size:12px; color:var(--text-3);}
   .panel{background:var(--surface); border:1px solid var(--border-soft); border-radius:14px; box-shadow:var(--shadow); padding:14px 16px;}
   .panel-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px 16px; margin-bottom:10px;}
@@ -143,7 +161,12 @@
   </header>
 
   <div class="controls">
-    <div class="chips" id="seasonChips"></div>
+        <div class="seasons-card" id="seasonCard">
+      <div class="seasons-head"><span>Seasons:<b id="seasonLbl"></b></span><button id="seasonReset" type="button">Reset to all years</button></div>
+      <div class="range" id="range"><div class="track"></div><div class="fill" id="rfill"></div><div id="rdots"></div>
+        <input type="range" id="r0" aria-label="From season"><input type="range" id="r1" aria-label="To season"></div>
+      <div class="range-labels" id="rlabels"></div>
+    </div>
     <div class="segmented" id="groupSeg" aria-label="Positions">
       <button data-v="flex" aria-pressed="true">FLEX</button>
       <button data-v="qb" aria-pressed="false">QB</button>
@@ -216,7 +239,7 @@
         <dt>PAR per FAB $</dt>
         <dd>PAR from claims that cost $1 or more ÷ the dollars spent on those claims. $0 claims are left out.</dd>
         <dt>Limits</dt>
-        <dd>Sleeper only shows winning bids, so there's no read on overpaying vs. the market. PAR is hindsight value. Playoff weeks aren't counted.</dd>
+        <dd>Sleeper only shows winning bids, so there's no read on overpaying vs. the market. PAR is hindsight value. Playoff weeks count for teams that were in the playoffs (a first-round bye counts too); replacement levels are set from the regular season.</dd>
       </dl>
     </details>
   </section>
@@ -230,7 +253,7 @@ const PALETTE_DARK  = ['#3b8ff4','#f64063','#e85d25','#c27e26','#a68e26','#6ea12
 const GROUPS = { flex: new Set(['RB','WR','TE']), qb: new Set(['QB']), dk: new Set(['K','DEF']) };
 const GROUP_HINT = { flex:'FLEX = RB, WR, TE', qb:'QB only', dk:'DEF / K', all:'All positions' };
 let EDGE = 3, SPIKE = 8;
-const state = { season:'all', group:'flex', basis:'st', type:'all', sortKey:'par', sortDir:'desc', addSortKey:'v', addSortDir:'desc', focus:null, tim:'all', q:'', limit:400 };
+const state = { s0:0, s1:9999, group:'flex', basis:'st', type:'all', sortKey:'par', sortDir:'desc', addSortKey:'v', addSortDir:'desc', focus:null, tim:'all', q:'', limit:400 };
 const TOUCH = matchMedia('(hover: none)').matches;
 let DATA = null, TIPS = [];
 
@@ -244,9 +267,20 @@ const cls = v => v==null ? 'muted' : v>0 ? 'good' : v<0 ? 'bad' : '';
 const mgrHtml = m => `<span class="mgr"><span class="dot" style="background:${colorOf(m)}"></span>${esc(m)}</span>`;
 const sum = (arr, f) => arr.reduce((s,x)=>s+(f(x)||0),0);
 const inGroup = pos => state.group==='all' || GROUPS[state.group].has(pos);
-const inSeason = s => state.season==='all' || s===+state.season;
+const inSeason = s => s>=state.s0 && s<=state.s1;
+const seasonsAll = () => state.s0===DATA.seasons[0].s && state.s1===DATA.seasons[DATA.seasons.length-1].s;
+const LIMIT0 = 400;
 const seasonMeta = s => DATA.seasons.find(x=>x.s===s);
-const seasonWeeks = s => { const m = seasonMeta(s); return Math.min(m.done, m.reg_end); };
+const teamOf = (s, m) => (seasonMeta(s).teams.find(t => t.m===m) || {});
+const teamWeeks = (s, m) => teamOf(s, m).weeks || 0;      // regular-season weeks played + playoff weeks his team was in
+const ORD = n => { const v = n % 100; return n + (['th','st','nd','rd'][(v-20)%10] || ['th','st','nd','rd'][v] || 'th'); };
+function seasonInfo(s, m){          // record, PF+ and how the season ended, for hover headers
+  const t = teamOf(s, m); if(t.rank==null) return '';
+  const rec = `${t.wins}\u2013${t.losses}${t.ties?'\u2013'+t.ties:''}`;
+  const n = seasonMeta(s).teams.length;
+  return `<div style="font-weight:400;margin:-2px 0 5px"><b>${rec}</b> · PF+ <b>${t.pfp ?? '\u2014'}</b> · <b>${esc(t.finish||'')}</b>${t.seed?` (#${t.seed} seed)`:''}` +
+    `<div class="o">${ORD(t.rank)} of ${n} in the regular-season standings${t.pw?` · ${t.pw} playoff week${t.pw>1?'s':''} counted`:''}</div></div>`;
+}
 const val = a => (state.basis==='st' ? a.par : a.parR) ?? 0;
 const regretOf = d => Math.max(0, d.sbp ?? 0);
 const basisWord = () => state.basis==='st' ? 'started' : 'rostered';
@@ -266,7 +300,7 @@ function addWeeksTip(a){
   const skipped = (a.wk||[]).filter(x => !x[2] && !x[3]).length;
   const rows = (a.wk||[]).filter(x => x[2] || x[3]).map(([w,p,s,pl]) => {
     const po = w > me.reg_end;
-    const counts = !po && (state.basis==='st' ? s : pl);
+    const counts = state.basis==='st' ? s : pl;
     const note = po ? 'playoffs' : (!pl ? 'did not play' : '');
     return [`${a.s} wk${w}`, s ? 'started' : '<span class="o">bench</span>', `<span class="o">${note}</span>`, `<span class="o">${fmt(p)} pts</span>`, counts ? sgn(p - rp) : '<span class="o">—</span>'];
   });
@@ -302,7 +336,7 @@ function aggregate(){
   A.forEach(a => get(a.m).adds.push(a));
   D.forEach(d => get(d.m).drops.push(d));
   return Object.values(rows).filter(r => r.seasons.length).map(r => {
-    const par = sum(r.adds, val), weeks = sum(r.seasons, seasonWeeks);
+    const par = sum(r.adds, val), weeks = sum(r.seasons, s => teamWeeks(s, r.m));
     const claims = r.adds.filter(a=>a.ty==='W' && a.b>0), fab = sum(claims, a=>a.b);
     const regret = sum(r.drops, regretOf);
     return {...r, par, weeks, parWk: weeks ? par/weeks : null, n:r.adds.length,
@@ -314,7 +348,7 @@ function aggregate(){
 
 const BOARD_TIPS = {
   par: r => tipTable(`${esc(r.m)} · ${basisWord()} PAR from pickups`, r.adds.slice().sort((a,b)=>val(b)-val(a)).map(addRow), `${sgn(r.par)} PAR from ${r.n} pickups`),
-  parWk: r => tipTable(`${esc(r.m)} · PAR per week`, r.seasons.slice().sort().map(s => { const p = sum(r.adds.filter(a=>a.s===s), val), w = seasonWeeks(s); return [`${s}${seasonMeta(s).finished?'':'*'}`, `${sgn(p,0)} over ${w} wks`, sgn(p/w,2)]; }), `${sgn(r.par,0)} ÷ ${r.weeks} wks = ${sgn(r.parWk,2)} per week`),
+  parWk: r => tipTable(`${esc(r.m)} · PAR per week`, r.seasons.slice().sort().map(s => { const p = sum(r.adds.filter(a=>a.s===s), val), w = teamWeeks(s, r.m); return [`${s}${seasonMeta(s).finished?'':'*'}`, `${sgn(p,0)} over ${w} wks`, sgn(p/w,2)]; }), `${sgn(r.par,0)} ÷ ${r.weeks} wks = ${sgn(r.parWk,2)} per week`),
   hits: r => tipTable(`${esc(r.m)} · ${DATA.hit_threshold}+ started PAR`, r.adds.filter(a=>(a.par??0)>=DATA.hit_threshold).sort((a,b)=>b.par-a.par).map(a=>[`${a.s} wk${a.w}`, `${esc(a.pl)} <span class="o">${esc(a.pos)}</span>`, sgn(a.par)])),
   early: r => tipTable(`${esc(r.m)} · early calls`, r.adds.filter(a=>a.tim==='early').sort((a,b)=>val(b)-val(a)).map(a=>[`${a.s} wk${a.w}`, esc(a.pl), `${sgn(a.pre)} → ${sgn(a.post)}`, sgn(val(a))]), 'PAR/G before → after · PAR for you'),
   chase: r => tipTable(`${esc(r.m)} · chases`, r.adds.filter(a=>a.tim==='chase').sort((a,b)=>b.b-a.b || b.spk-a.spk).map(a=>[`${a.s} wk${a.w}`, esc(a.pl), `spike ${sgn(a.spk)} → ${sgn(a.post)}/G`, a.ty==='W'?'$'+a.b:'FA']), 'spike game PAR → PAR/G after · cost'),
@@ -357,7 +391,7 @@ function renderBoard(){
     renderBoard();
   });
   tbl.querySelector('tbody').innerHTML = rows.map(r => `<tr data-m="${esc(r.m)}" class="${r.m===state.focus?'sel':''}">` + BOARD_COLS.map(c => {
-    if(c.k==='m') return `<td class="l">${mgrHtml(r.m)}</td>`;
+    if(c.k==='m'){ const one = state.s0===state.s1 && seasonInfo(state.s0, r.m); return `<td class="l"${one?tipAttr(()=>`<div class="tt-h">${esc(r.m)} · ${state.s0}</div>${seasonInfo(state.s0, r.m)}`):''}>${mgrHtml(r.m)}</td>`; }
     const v = r[c.k];
     const txt = v==null ? '—' : c.sg ? sgn(v, c.d) : (c.pre||'') + fmt(v, c.d);
     return `<td class="${c.sg ? cls(v) : ''}"${tipAttr(() => BOARD_TIPS[c.k](r))}>${txt}</td>`;
@@ -374,20 +408,20 @@ function renderHeat(){
   const cell = {}; all.forEach(a => { (cell[a.m+'|'+a.s] ||= []).push(a); });
   const played = new Set(); DATA.seasons.forEach(s => s.teams.forEach(t => played.add(t.m+'|'+s.s)));
   // shade by PAR per week so the partial season sits on the same scale
-  const perWk = (list, s) => sum(list, val) / seasonWeeks(s);
-  const maxAbs = Math.max(0.5, ...[...played].map(k => { const s=+k.split('|')[1]; return Math.abs(perWk(cell[k]||[], s)); }));
-  tbl.querySelector('thead').innerHTML = '<tr><th>Manager</th>' + seasons.map(s => `<th class="${state.season!=='all'&&inSeason(s)?'cur':''}">${s}${seasonMeta(s).finished?'':'*'}</th>`).join('') + '<th>Total</th></tr>';
+  const perWk = (list, s, m) => sum(list, val) / (teamWeeks(s, m) || 1);
+  const maxAbs = Math.max(0.5, ...[...played].map(k => { const [m_, s_] = k.split('|'); return Math.abs(perWk(cell[k]||[], +s_, m_)); }));
+  tbl.querySelector('thead').innerHTML = '<tr><th>Manager</th>' + seasons.map(s => `<th class="${!seasonsAll()&&inSeason(s)?'cur':''}">${s}${seasonMeta(s).finished?'':'*'}</th>`).join('') + '<th>Total</th></tr>';
   tbl.querySelector('tbody').innerHTML = managers.map(m => {
     let tot = 0;
     const tds = seasons.map(s => {
       const k = m+'|'+s;
       if(!played.has(k)) return '<td class="c dim"></td>';
       const list = cell[k] || [], v = sum(list, val); tot += v;
-      const a = Math.min(1, Math.abs(perWk(list, s)) / maxAbs);
-      const faded = state.season!=='all' && !inSeason(s);
+      const a = Math.min(1, Math.abs(perWk(list, s, m)) / maxAbs);
+      const faded = !seasonsAll() && !inSeason(s);
       const bg = `rgba(var(${v>=0?'--heat':'--heatneg'}), ${(0.05 + a*0.75) * (faded ? .35 : 1)})`;
       const strong = a > .55 && !faded;
-      return `<td class="c" style="background:${bg};${strong?'color:#fff':''}"${tipAttr(()=>tipTable(`${esc(m)} · ${s} pickups`, list.slice().sort((x,y)=>val(y)-val(x)).map(addRow), `${sgn(v)} ${basisWord()} PAR from ${list.length} pickups · ${sgn(v/seasonWeeks(s),2)} per week`))}>${sgn(v,0)}</td>`;
+      return `<td class="c" style="background:${bg};${strong?'color:#fff':''}"${tipAttr(()=>tipTable(`${esc(m)} · ${s} pickups${seasonInfo(s, m)?'</div>'+seasonInfo(s, m)+'<div>':''}`, list.slice().sort((x,y)=>val(y)-val(x)).map(addRow), `${sgn(v)} ${basisWord()} PAR from ${list.length} pickups · ${sgn(v/(teamWeeks(s,m)||1),2)} per week`))}>${sgn(v,0)}</td>`;
     }).join('');
     return `<tr class="${m===state.focus?'sel':''}"><td class="l">${mgrHtml(m)}</td>${tds}<td class="tot ${cls(tot)}">${sgn(tot,0)}</td></tr>`;
   }).join('');
@@ -487,13 +521,28 @@ fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
   document.querySelectorAll('.spike').forEach(e => e.textContent = SPIKE);
   const gen = new Date(d.generated);
   document.getElementById('updated').textContent = `Updated ${gen.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} · NFL ${d.nfl.season} wk ${d.nfl.week}`;
-  const chips = document.getElementById('seasonChips');
-  chips.innerHTML = ['all', ...d.seasons.map(s=>s.s)].map(o => { const s = d.seasons.find(x=>x.s===o); return `<button class="chip" data-v="${o}" aria-pressed="${o==='all'}">${o==='all'?'All seasons':o}${s&&!s.finished?'*':''}</button>`; }).join('');
-  chips.querySelectorAll('.chip').forEach(c => c.onclick = () => {
-    state.season = c.dataset.v; state.limit = 400;
-    chips.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', x===c));
-    renderAll();
-  });
+  const yrs = d.seasons.map(s=>s.s), Y0 = yrs[0], Y1 = yrs[yrs.length-1], N = yrs.length;
+  state.s0 = Y0; state.s1 = Y1;
+  const r0 = document.getElementById('r0'), r1 = document.getElementById('r1');
+  [r0,r1].forEach(r => { r.min = Y0; r.max = Y1; r.step = 1; });
+  const pctOf = y => N>1 ? (y-Y0)/(Y1-Y0)*100 : 0;
+  document.getElementById('rdots').innerHTML = yrs.map(y => `<div class="dot" data-y="${y}" style="left:${pctOf(y)}%"></div>`).join('');
+  const rl = document.getElementById('rlabels');
+  rl.innerHTML = yrs.map(y => `<button type="button" data-y="${y}" style="left:${pctOf(y)}%">\u2019${String(y).slice(2)}${seasonMeta(y).finished?'':'*'}</button>`).join('');
+  const syncRange = () => {
+    r0.value = state.s0; r1.value = state.s1;
+    document.getElementById('rfill').style.cssText = `left:${pctOf(state.s0)}%; width:${pctOf(state.s1)-pctOf(state.s0)}%`;
+    document.querySelectorAll('#rdots .dot').forEach(x => x.classList.toggle('on', +x.dataset.y>=state.s0 && +x.dataset.y<=state.s1));
+    rl.querySelectorAll('button').forEach(x => x.classList.toggle('in', +x.dataset.y>=state.s0 && +x.dataset.y<=state.s1));
+    document.getElementById('seasonLbl').textContent = state.s0===state.s1 ? ' '+state.s0 : ` ${state.s0}\u2013${state.s1}`;
+    document.getElementById('seasonReset').disabled = state.s0===Y0 && state.s1===Y1;
+  };
+  const setRange = (a,b) => { state.s0 = Math.min(a,b); state.s1 = Math.max(a,b); state.limit = LIMIT0; syncRange(); renderAll(); };
+  r0.oninput = () => setRange(Math.min(+r0.value, state.s1), state.s1);
+  r1.oninput = () => setRange(state.s0, Math.max(+r1.value, state.s0));
+  rl.querySelectorAll('button').forEach(x => x.onclick = () => setRange(+x.dataset.y, +x.dataset.y));
+  document.getElementById('seasonReset').onclick = () => setRange(Y0, Y1);
+  syncRange();
   document.getElementById('q').oninput = e => { state.q = e.target.value; state.limit = 400; renderAdds(); };
   document.getElementById('moreBtn').onclick = () => { state.limit += 400; renderAdds(); };
   const ms = document.getElementById('mgrSel');

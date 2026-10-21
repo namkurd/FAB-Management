@@ -20,8 +20,8 @@ Filters: season, **positions** (FLEX = RB/WR/TE, the default · QB · DEF/K · A
 
 | Metric | Definition |
 |---|---|
-| PAR (headline) | Started: Σ over regular-season weeks in the starting lineup of (points − replacement PPG). Rostered: Σ over rostered weeks he played |
-| PAR / wk | PAR ÷ regular-season weeks played (comparable across seasons, including the partial one) |
+| PAR (headline) | Started: Σ over weeks in the starting lineup of (points − replacement PPG). Rostered: Σ over rostered weeks he played. Regular season, plus playoff weeks for teams that were in the playoffs (a first-round bye counts; membership comes from Sleeper's winners bracket, plus the league's recorded podium, SleeperAuction `config/playoffs.json`) |
+| PAR / wk | PAR ÷ weeks played: regular-season weeks plus the playoff weeks the team was in (comparable across seasons, including the partial one) |
 | Difference-makers | Pickups worth 25+ started PAR |
 | Early calls | PAR/G ≤ 0 in the 3 weeks before the pickup counted, ≥ +3 in the 4 weeks after, and held ≥ 2 of those weeks |
 | Chases | One spike game right before the pickup (≥ +8 PAR), the 3 weeks before that ≤ 0 PAR/G (or no games), ≤ 0 PAR/G in the 4 weeks after |
@@ -58,3 +58,7 @@ pip install -r requirements.txt
 python update_waivers.py          # ~1 min cold, seconds once cache/ is warm
 python -m http.server             # then open http://localhost:8000
 ```
+
+## Season context on hover
+
+Hovering a manager in a season (heatmap cells, or the leaderboard name when one season is selected) shows record, **PF+** (points for ÷ that season's league average × 100, so 120 = 20% above average), regular-season finish by Rumbles and how the season ended (champion, runner-up, 3rd, 4th, made the playoffs, missed the playoffs, Sacko). `data.json` → `seasons[].teams[]` carries `wins, losses, ties, pf, pfp, rank, rumbles, inPO, pw, weeks, finish`. Playoff teams for 2021 to 2025 are listed in seed order in `playoff_teams.json` (the league's own record, since Sleeper's brackets for those years don't match what was played); from 2026 they come from Sleeper's winners bracket, with a first-round bye counting as a playoff week. Podium and Sacko names come from SleeperAuction's `config/playoffs.json`. Podium teams and four-team brackets count both playoff weeks; in five-team years the two non-podium teams count one week, because the record doesn't say which of them lost in the opening round. Hover also shows the playoff seed.

@@ -1,0 +1,8 @@
+{
+  "_comment": "Playoff teams by season in seed order (#1 first), from the league's own record. Sleeper's brackets for 2021-2025 do not match what was played, so these are used instead; 2026 on uses Sleeper's winners bracket. Names as shown on the site (Rohaan = Haan).",
+  "2021": ["Ryan", "Ben", "Ankit", "Aidan"],
+  "2022": ["Ben", "Aidan", "Alex", "Haan"],
+  "2023": ["Steven", "Ryan", "Jake", "Ankit", "Joe"],
+  "2024": ["Ben", "Alex", "Aidan", "Haan", "Joe"],
+  "2025": ["Steven", "Aidan", "Joe", "Ankit", "Haan"]
+}
