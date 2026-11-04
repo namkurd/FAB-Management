@@ -27,9 +27,15 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          curl -sf -X POST -H 'Content-type: application/json' \
+          url=$(printf '%s' "$SLACK_WEBHOOK_URL" | tr -d ' \r\n"'"'"'')
+          case "$url" in
+            https://hooks.slack.com/services/*) ;;
+            "") echo "::error::Repo secret SLACK_WEBHOOK_URL is empty or missing (check the exact name)"; exit 1 ;;
+            *) echo "::error::SLACK_WEBHOOK_URL is not a Slack webhook URL. It must start with https://hooks.slack.com/services/ and contain nothing else. Re-copy it from api.slack.com/apps > IR Check > Incoming Webhooks and re-save the secret."; exit 1 ;;
+          esac
+          curl -sSf -X POST -H 'Content-type: application/json' \
             --data '{"text":"✅ IR check webhook test: the daily IR eligibility check can post here."}' \
-            "$SLACK_WEBHOOK_URL"
+            "$url"
 
       - name: Run IR check (posts only if there are violations)
         env:

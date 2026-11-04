@@ -190,7 +190,7 @@ def main():
         print(text)
 
     if args.post:
-        hook = os.environ.get("SLACK_WEBHOOK_URL")
+        hook = os.environ.get("SLACK_WEBHOOK_URL", "").strip().strip("\"'")
         if not hook:
             print("--post given but SLACK_WEBHOOK_URL is not set", file=sys.stderr)
             return 2
