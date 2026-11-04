@@ -1,0 +1,37 @@
+name: IR eligibility check
+
+# Thu-Sun at 6:41am Eastern (11:41 UTC = EST, which covers the rest of the NFL season).
+# Posts to Slack (#management webhook) ONLY when a player is on IR illegally.
+on:
+  schedule:
+    - cron: "41 11 * * 0,4,5,6"
+  workflow_dispatch:
+    inputs:
+      test_message:
+        description: "Send a test message to Slack to verify the webhook"
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+
+      - name: Slack webhook test
+        if: ${{ inputs.test_message }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -sf -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ IR check webhook test: the daily IR eligibility check can post here."}' \
+            "$SLACK_WEBHOOK_URL"
+
+      - name: Run IR check (posts only if there are violations)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: python3 ir_check.py --violations-only --post | tee -a "$GITHUB_STEP_SUMMARY"
