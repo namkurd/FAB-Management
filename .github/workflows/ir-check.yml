@@ -1,10 +1,10 @@
 name: IR eligibility check
 
-# Thu-Sun at 6:41am Eastern (11:41 UTC = EST, which covers the rest of the NFL season).
+# Thu-Mon at 7:00am Eastern (12:00 UTC = EST, which covers the rest of the NFL season).
 # Posts to Slack (#management webhook) ONLY when a player is on IR illegally.
 on:
   schedule:
-    - cron: "41 11 * * 0,4,5,6"
+    - cron: "0 12 * * 0,1,4,5,6"
   workflow_dispatch:
     inputs:
       test_message:
