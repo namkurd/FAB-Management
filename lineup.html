@@ -606,5 +606,22 @@ fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', renderAll);
 }).catch(err => { document.getElementById('updated').textContent = 'Could not load data.json — ' + err; });
 </script>
+<script>
+/* Deep links from the DTF Club Record Book: ?season=2024&manager=Ben filters this page to that year and manager. Safe to remove. */
+(function(){
+  var q=new URLSearchParams(location.search), y=q.get('season'), m=q.get('manager'); if(!y&&!m) return;
+  var n=0, t=setInterval(function(){
+    var rl=document.querySelector('#rlabels button'), ms=document.getElementById('mgrSel');
+    var ready = rl && (ms ? ms.options.length>1 : document.querySelector('tr[data-m]'));
+    if(!ready){ if(++n>100) clearInterval(t); return; }
+    clearInterval(t);
+    if(y){ var b=document.querySelector('#rlabels button[data-y="'+String(y).replace(/[^0-9]/g,'')+'"]'); if(b) b.click(); }
+    if(m){
+      if(ms){ ms.value=m; if(ms.value===m) ms.dispatchEvent(new Event('change')); }
+      else { var row=document.querySelector('tr[data-m="'+m.replace(/"/g,'')+'"]'); if(row) row.click(); }
+    }
+  },150);
+})();
+</script>
 </body>
 </html>
