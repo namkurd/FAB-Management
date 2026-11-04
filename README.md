@@ -70,9 +70,4 @@ League rule: a player who is new to a team this week (waiver, free agent, trade,
 - **On IR but not eligible**: new this week, already in an IR slot, must come off.
 - **Hurt but blocked**: new this week, Out / Doubtful / IR / COVID, not on IR; can't be moved there until next week.
 
-`python3 ir_check.py [--week N] [--statuses out,doubtful,ir,cov] [--post] [--json]`. `--post` sends to Slack via the `SLACK_WEBHOOK_URL` env var. "This week" is the week of the transaction's Sleeper `leg`, so it rolls over when Sleeper's week does. Tests: `python3 tests/test_ir_check.py`.
-
-**Running it from Slack** (`/ircheck` or `/ircheck 9`):
-1. Add `SLACK_WEBHOOK_URL` (incoming webhook for the channel) as a repo secret. `.github/workflows/ir-check.yml` then posts the report there; it's also runnable from the Actions tab.
-2. Deploy `slack_relay/worker.js` (Cloudflare Worker, free tier) with `SLACK_SIGNING_SECRET`, `GITHUB_TOKEN` (fine-grained, Actions read/write on this repo), `GH_REPO`.
-3. In the Slack app, create the slash command `/ircheck` with the Worker URL as its Request URL.
+`python3 ir_check.py [--week N] [--statuses out,doubtful,ir,cov] [--violations-only] [--post] [--json]`. `--violations-only` is the scheduled mode: it reports only players already on IR illegally and prints nothing to post when there are none. `--post` sends to Slack via the `SLACK_WEBHOOK_URL` env var. "This week" is the week of the transaction's Sleeper `leg`, so it rolls over when Sleeper's week does. Tests: `python3 tests/test_ir_check.py`.

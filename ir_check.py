@@ -158,6 +158,8 @@ def main():
                     help="comma list of Sleeper injury_status values to treat as IR-relevant")
     ap.add_argument("--post", action="store_true", help="post to Slack via SLACK_WEBHOOK_URL")
     ap.add_argument("--json", action="store_true", help="print JSON instead of text")
+    ap.add_argument("--violations-only", action="store_true",
+                    help="scheduled mode: report/post only players already on IR illegally; stay silent if none")
     args = ap.parse_args()
 
     state = get("/state/nfl")
@@ -178,6 +180,11 @@ def main():
 
     if args.json:
         print(json.dumps({"week": week, **report}, indent=2))
+    if args.violations_only:
+        report["blocked"] = []
+        if not report["violations"]:
+            print(f"Week {week}: no IR rule violations; nothing to post.")
+            return 0
     text = format_report(report, week, owners, league.get("name", "DTF Club"))
     if not args.json:
         print(text)
