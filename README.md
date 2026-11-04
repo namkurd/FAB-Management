@@ -62,3 +62,17 @@ python -m http.server             # then open http://localhost:8000
 ## Season context on hover
 
 Hovering a manager in a season (heatmap cells, or the leaderboard name when one season is selected) shows record, **PF+** (points for ÷ that season's league average × 100, so 120 = 20% above average), regular-season finish by Rumbles and how the season ended (champion, runner-up, 3rd, 4th, made the playoffs, missed the playoffs, Sacko). `data.json` → `seasons[].teams[]` carries `wins, losses, ties, pf, pfp, rank, rumbles, inPO, pw, weeks, finish`. Playoff teams for 2021 to 2025 are listed in seed order in `playoff_teams.json` (the league's own record, since Sleeper's brackets for those years don't match what was played); from 2026 they come from Sleeper's winners bracket, with a first-round bye counting as a playoff week. Podium and Sacko names come from SleeperAuction's `config/playoffs.json`. Podium teams and four-team brackets count both playoff weeks; in five-team years the two non-podium teams count one week, because the record doesn't say which of them lost in the opening round. Hover also shows the playoff seed.
+
+## IR eligibility check (`ir_check.py`)
+
+League rule: a player who is new to a team this week (waiver, free agent, trade, anything) can't go on IR in his first week there; from the next week on he can. `ir_check.py` pulls rosters, this week's completed transactions and NFL injury statuses from Sleeper and reports:
+
+- **On IR but not eligible**: new this week, already in an IR slot, must come off.
+- **Hurt but blocked**: new this week, Out / Doubtful / IR / COVID, not on IR; can't be moved there until next week.
+
+`python3 ir_check.py [--week N] [--statuses out,doubtful,ir,cov] [--post] [--json]`. `--post` sends to Slack via the `SLACK_WEBHOOK_URL` env var. "This week" is the week of the transaction's Sleeper `leg`, so it rolls over when Sleeper's week does. Tests: `python3 tests/test_ir_check.py`.
+
+**Running it from Slack** (`/ircheck` or `/ircheck 9`):
+1. Add `SLACK_WEBHOOK_URL` (incoming webhook for the channel) as a repo secret. `.github/workflows/ir-check.yml` then posts the report there; it's also runnable from the Actions tab.
+2. Deploy `slack_relay/worker.js` (Cloudflare Worker, free tier) with `SLACK_SIGNING_SECRET`, `GITHUB_TOKEN` (fine-grained, Actions read/write on this repo), `GH_REPO`.
+3. In the Slack app, create the slash command `/ircheck` with the Worker URL as its Request URL.
