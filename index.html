@@ -132,6 +132,7 @@
   .tooltip td.r{text-align:right;}
   .tooltip .tt-f{margin-top:6px; padding-top:5px; border-top:1px solid color-mix(in srgb, var(--bg) 30%, transparent); opacity:.85;}
   .tooltip .o{opacity:.6;}
+  @media (max-width:480px){ .tooltip{padding:8px 9px;} .tooltip td{font-size:10.5px;} .tooltip td + td{padding-left:8px;} .tooltip .tt-cols{gap:14px;} }   /* phone: fit more of a table row before it has to scroll */
   details summary{cursor:pointer; font-weight:600; font-family:var(--font-display); font-size:16px;}
   .method{font-size:13px; color:var(--text-2); line-height:1.55;}
   .method dt{font-weight:600; color:var(--text); margin-top:8px;}
@@ -578,6 +579,7 @@ fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
 })();
 </script>
 <script>window.DTF_VIEWS = {"hide": "nav.tabs", "items": [{"label": "Pickups", "href": "index.html"}, {"label": "Sit / start", "href": "lineup.html"}]};</script>
+<script>window.DTF_TIPS = ["#tip"];</script>
 <script src="/shell/nav.js" defer></script>
 </body>
 </html>
