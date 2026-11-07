@@ -148,6 +148,8 @@
   .tabs a{font-family:var(--font-display); font-weight:600; font-size:14px; color:var(--text-3); text-decoration:none; padding:6px 12px; border-bottom:2px solid transparent; margin-bottom:-1px;}
   .tabs a[aria-current="page"]{color:var(--text); border-bottom-color:var(--text);}
   .tabs a:hover{color:var(--text);}
+  @keyframes dl-flash{0%,60%{background:rgba(240,145,74,.35);outline:2px solid #f0914a}100%{background:transparent;outline-color:transparent}}
+  tr.deeplink td{animation:dl-flash 6s ease-out 1}
 </style>
 </head>
 <body>
@@ -449,7 +451,7 @@ function renderAdds(){
     const live = seasonMeta(a.s).finished ? '' : '<span class="tag">live</span>';
     const wk = ()=>addWeeksTip(a);
     const rg = a.dr && a.dr.length ? () => a.dr.map(d => regretTip({...d, s:a.s, w:a.w, m:a.m})).join('<div style="height:8px"></div>') : null;
-    return `<tr><td class="l"><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)}</td><td class="l">${mgrHtml(a.m)}</td><td>${a.s}${live}</td><td>${a.w}</td>
+    return `<tr data-k="${a.s}.${a.w}.${esc(a.pid)}.${esc(a.m)}"><td class="l"><span class="pos-pill">${esc(a.pos)}</span>${esc(a.pl)}</td><td class="l">${mgrHtml(a.m)}</td><td>${a.s}${live}</td><td>${a.w}</td>
       <td>${a.ty==='W'?'$'+a.b:'<span class="muted">FA</span>'}</td><td class="${cls(a.v)}"${tipAttr(wk)}>${sgn(a.v)}</td><td class="muted"${tipAttr(wk)}>${fmt(a.pts)}</td>
       <td class="l"${a.tim?tipAttr(()=>timingTip(a)):''}>${a.tim?timTag(a):'<span class="muted">—</span>'}</td><td class="muted"${a.tim?tipAttr(()=>timingTip(a)):''}>${a.pre==null&&a.post==null?'—':sgn(a.pre)+' → '+sgn(a.post)}</td>
       <td class="l muted"${rg?tipAttr(rg):''}>${esc(a.dropped)||'—'}</td><td class="${a.rg>0?'bad':'muted'}"${rg?tipAttr(rg):''}>${a.rg?fmt(a.rg):'—'}</td></tr>`;
@@ -564,7 +566,8 @@ fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
 <script>
 /* Deep links from the DTF Club Record Book: ?season=2024&manager=Ben filters this page to that year and manager. Safe to remove. */
 (function(){
-  var q=new URLSearchParams(location.search), y=q.get('season'), m=q.get('manager'); if(!y&&!m) return;
+  var q=new URLSearchParams(location.search), y=q.get('season'), m=q.get('manager'), pk=q.get('pickup'); if(!y&&!m&&!pk) return;
+  if(pk&&!y) y=pk.split('.')[0];   // ?pickup=season.week.playerId.manager
   var n=0, t=setInterval(function(){
     var rl=document.querySelector('#rlabels button'), ms=document.getElementById('mgrSel');
     var ready = rl && (ms ? ms.options.length>1 : document.querySelector('tr[data-m]'));
@@ -574,6 +577,14 @@ fetch('data.json?_=' + Date.now()).then(r => r.json()).then(d => {
     if(m){
       if(ms){ ms.value=m; if(ms.value===m) ms.dispatchEvent(new Event('change')); }
       else { var row=document.querySelector('tr[data-m="'+m.replace(/"/g,'')+'"]'); if(row) row.click(); }
+    }
+    if(pk){   // show that one pickup in the list below: every position and type, the whole season, then scroll to it and flash it
+      var p=pk.split('.'); state.group='all'; state.type='all'; state.tim='all'; state.q=''; state.focus=null; state.limit=99999;
+      var qq=document.getElementById('q'); if(qq) qq.value='';
+      ['groupSeg','typeSeg'].forEach(function(id){ var b=document.querySelector('#'+id+' button[data-v="all"]'); if(b) b.click(); });
+      state.limit=99999; renderAll();
+      var row=document.querySelector('#adds tr[data-k^="'+p[0].replace(/[^0-9]/g,'')+'.'+p[1].replace(/[^0-9]/g,'')+'.'+p[2].replace(/[^0-9A-Za-z_-]/g,'')+'."]');
+      if(row){ row.scrollIntoView({block:'center'}); row.classList.add('deeplink'); setTimeout(function(){ row.classList.remove('deeplink'); }, 6000); }
     }
   },150);
 })();
