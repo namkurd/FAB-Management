@@ -1,6 +1,6 @@
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from ir_check import week_arrivals, build_report, format_report, DEFAULT_STATUSES
+from ir_check import week_arrivals, week_window, build_report, format_report, DEFAULT_STATUSES
 
 PLAYERS = {
     "1": {"full_name": "Hurt Guy", "position": "RB", "team": "KC", "injury_status": "Out"},
@@ -37,5 +37,16 @@ def test_readd_same_week_still_new():
          {"status": "complete", "type": "free_agent", "leg": 9, "created": 3, "adds": {"1": 1}}]
     assert (1, "1") in week_arrivals(t, 9)
 
+def test_tuesday_night_waiver_counts_for_the_new_week():
+    state = {"season_start_date": "2026-09-09"}
+    start, end = week_window(state, 9)                                   # Tue Nov 3 05:00 UTC .. Tue Nov 10 05:00 UTC
+    assert (start, end) == (1793682000000, 1794286800000)
+    t = [{"status": "complete", "type": "waiver", "leg": 8, "created": 1793753865037, "adds": {"1": 5}, "drops": None},   # Spears: Tue night, Sleeper says leg 8
+         {"status": "complete", "type": "free_agent", "leg": 8, "created": start - 1, "adds": {"2": 5}},                  # Monday night: last week
+         {"status": "complete", "type": "free_agent", "leg": 9, "created": end + 1, "adds": {"3": 5}}]                    # next Tuesday: next week
+    arr = week_arrivals(t, 9, (start, end))
+    assert (5, "1") in arr and (5, "2") not in arr and (5, "3") not in arr
+    assert (5, "1") not in week_arrivals(t, 9)                           # the old leg-based rule is what missed him
+
 if __name__ == "__main__":
-    test_report(); test_readd_same_week_still_new(); print("ok")
+    test_report(); test_readd_same_week_still_new(); test_tuesday_night_waiver_counts_for_the_new_week(); print("ok")
