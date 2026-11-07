@@ -24,6 +24,7 @@ Usage:
 Env: SLEEPER_LEAGUE_ID (default: the 2026 DTF Club league), SLACK_WEBHOOK_URL.
 """
 import argparse
+import datetime as dt
 import json
 import os
 import sys
@@ -43,13 +44,28 @@ def get(path):
     return r.json()
 
 
-def week_arrivals(transactions, week):
+def week_window(state, week):
+    """(start_ms, end_ms) of fantasy week `week`: from the Tuesday after the previous Monday night to the next Tuesday.
+    Sleeper stamps a waiver that runs Tuesday night with the PREVIOUS week's number (`leg`), but to the league it is a
+    this-week pickup (he can play that Thursday), so weeks are cut by date, not by `leg`."""
+    thursday = dt.date.fromisoformat(state["season_start_date"]) + dt.timedelta(days=1 + 7 * (week - 1))   # Thursday that opens `week`
+    start = dt.datetime.combine(thursday - dt.timedelta(days=2), dt.time(5, 0), dt.timezone.utc)           # Tuesday, just after midnight Eastern
+    return int(start.timestamp() * 1000), int((start + dt.timedelta(days=7)).timestamp() * 1000)
+
+
+def week_arrivals(transactions, week, window=None):
     """{(roster_id, player_id): transaction} for the latest completed add of each player to
     each roster during `week`. Later transactions overwrite earlier ones, so a player who is
-    added, dropped and re-added is still 'new this week'."""
+    added, dropped and re-added is still 'new this week'. With a `window` (week_window) the week is
+    decided by when the move happened; without one, by Sleeper's own `leg`."""
     arrivals = {}
     for t in sorted(transactions, key=lambda t: t.get("created", 0)):
-        if t.get("status") != "complete" or t.get("leg", week) != week:
+        if t.get("status") != "complete":
+            continue
+        if window:
+            if not (window[0] <= t.get("created", 0) < window[1]):
+                continue
+        elif t.get("leg", week) != week:
             continue
         for pid, rid in (t.get("adds") or {}).items():
             arrivals[(rid, pid)] = t
@@ -171,11 +187,16 @@ def main():
     league = get(f"/league/{LEAGUE_ID}")
     rosters = get(f"/league/{LEAGUE_ID}/rosters")
     users = get(f"/league/{LEAGUE_ID}/users")
-    txns = get(f"/league/{LEAGUE_ID}/transactions/{week}")
+    window = week_window(state, week)
+    txns, seen = [], set()
+    for leg in sorted({max(1, week - 1), week}):   # a Tuesday-night waiver is filed under the previous leg
+        for t in get(f"/league/{LEAGUE_ID}/transactions/{leg}"):
+            if t.get("transaction_id") not in seen:
+                seen.add(t.get("transaction_id")); txns.append(t)
     players = get("/players/nfl")
 
     statuses = {s.strip().lower() for s in args.statuses.split(",") if s.strip()}
-    report = build_report(rosters, week_arrivals(txns, week), players, statuses)
+    report = build_report(rosters, week_arrivals(txns, week, window), players, statuses)
     owners = owner_names(rosters, users)
 
     if args.json:
