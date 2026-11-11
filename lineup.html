@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sit / Start</title>
+<title>Sit / Start · DTF Club</title>
 <meta name="description" content="DTF Club lineup decisions: starters who scored below replacement while a better option sat on the bench.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
@@ -234,7 +234,7 @@
         <dt>Cost a win</dt>
         <dd>A week you lost where the misses that week add up to more than the margin — the right call would have won it.</dd>
         <dt>Rumbles lost</dt>
-        <dd>The league's standings: each week, 9 Rumbles for winning your matchup plus 1 for every team you outscored. Rumbles lost = what you'd have earned with that week's right calls (your score + points left on the bench, everyone else's score unchanged) minus what you actually earned. It counts both the flipped matchup and the teams you'd have passed.</dd>
+        <dd>The league's standings: each week, 10 Rumbles for a head-to-head win plus 1 for each additional team you outscored. Rumbles lost = what you'd have earned with that week's right calls (your score + points left on the bench, everyone else's score unchanged) minus what you actually earned. It counts both the flipped matchup and the teams you'd have passed.</dd>
         <dt>Judging the call (projections)</dt>
         <dd>Hindsight is easy, so every call is checked against <b>Sleeper's pre-game projections</b> for that week, scored with this league's settings, and sorted into a 2 × 2:</dd>
         <dd><table class="par-tbl" style="width:auto"><thead><tr><th class="l"></th><th class="l">Starter finished below replacement, bench option above</th><th class="l">Starter above replacement, bench option below</th></tr></thead><tbody>
@@ -375,7 +375,7 @@ const BOARD_COLS = [
   {k:'lost', l:'Pts left', d:0, h:'Total points left on the bench.'},
   {k:'n', l:'Misses', d:0, h:'Starter below replacement while an eligible bench player was above it.'},
   {k:'flips', l:'Cost a win', d:0, h:'Losses the right calls would have turned into wins.'},
-  {k:'rl', l:'Rumbles lost', d:0, h:'Rumbles (9 for a win + 1 per team outscored) the right calls would have added, everyone else\'s score unchanged.'},
+  {k:'rl', l:'Rumbles lost', d:0, h:'Rumbles (10 for a head-to-head win + 1 per additional team outscored) the right calls would have added, everyone else\'s score unchanged.'},
   {k:'brain', l:'Big brain', d:0, h:'Started the lower-projected player (by 2+ pts) and he finished above replacement while the higher-projected bench option finished below it.'},
   {k:'flipRec', l:'Toss-ups W–L', txt:'flipTxt', h:'Calls where the two options were projected within 2 pts of each other: won = your starter finished above replacement and the bench option below; lost = the reverse.'},
   {k:'flipPct', l:'Toss-up %', d:1, h:'Share of toss-ups won: your starter finished above replacement and the bench option below, out of all toss-ups (won + lost).'},
