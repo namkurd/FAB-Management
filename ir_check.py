@@ -53,6 +53,16 @@ def week_window(state, week):
     return int(start.timestamp() * 1000), int((start + dt.timedelta(days=7)).timestamp() * 1000)
 
 
+def current_week(state, now=None):
+    """The fantasy week we are in right now, by the same Tuesday-05:00-UTC cut as week_window, so the check rolls over to the
+    new week the moment it starts instead of waiting for Sleeper's own `week` to flip (which can trail by hours)."""
+    now_ms = int((now or dt.datetime.now(dt.timezone.utc)).timestamp() * 1000)
+    first, _ = week_window(state, 1)
+    if now_ms < first:
+        return state.get("week")
+    return (now_ms - first) // (7 * 24 * 3600 * 1000) + 1
+
+
 def week_arrivals(transactions, week, window=None):
     """{(roster_id, player_id): transaction} for the latest completed add of each player to
     each roster during `week`. Later transactions overwrite earlier ones, so a player who is
@@ -179,7 +189,7 @@ def main():
     args = ap.parse_args()
 
     state = get("/state/nfl")
-    week = args.week or state.get("week")
+    week = args.week or current_week(state) or state.get("week")
     if not args.week and state.get("season_type") != "regular":
         print(f"Sleeper says season_type={state.get('season_type')}; pass --week to force.", file=sys.stderr)
         return 1
