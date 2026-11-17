@@ -1,6 +1,7 @@
 import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from ir_check import week_arrivals, week_window, build_report, format_report, DEFAULT_STATUSES
+import datetime as dt
+from ir_check import week_arrivals, week_window, build_report, format_report, DEFAULT_STATUSES, current_week
 
 PLAYERS = {
     "1": {"full_name": "Hurt Guy", "position": "RB", "team": "KC", "injury_status": "Out"},
@@ -50,3 +51,12 @@ def test_tuesday_night_waiver_counts_for_the_new_week():
 
 if __name__ == "__main__":
     test_report(); test_readd_same_week_still_new(); test_tuesday_night_waiver_counts_for_the_new_week(); print("ok")
+
+
+def test_current_week_rolls_over_on_tuesday_morning():
+    state = {"season_start_date": "2026-09-09", "week": 10}
+    utc = dt.timezone.utc
+    assert current_week(state, dt.datetime(2026, 11, 17, 4, 59, tzinfo=utc)) == 10   # still the old week
+    assert current_week(state, dt.datetime(2026, 11, 17, 5, 0, tzinfo=utc)) == 11    # the new week, whatever Sleeper says
+    assert current_week(state, dt.datetime(2026, 11, 23, 12, 0, tzinfo=utc)) == 11
+    assert current_week(state, dt.datetime(2026, 9, 1, tzinfo=utc)) == 10            # before the season: falls back to Sleeper's number
