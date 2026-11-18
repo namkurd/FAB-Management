@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shotguns · FAB &amp; Sit/Start · DTF Club</title>
+<meta name="description" content="DTF Club Shotguns: every starter who took the field and scored zero, by manager and by week.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1;
+    --text:#131B24; --text-2:#4B5867; --text-3:#7C8896;
+    --border:#D7DEE4; --border-soft:#E4E9ED;
+    --good:#1A7F45; --good-rgb:26,127,69; --bad:#C4314B;
+    --heat:21,126,237; --heatneg:196,49,75;
+    --shadow:0 1px 2px rgba(19,27,36,.06), 0 6px 20px rgba(19,27,36,.06);
+    --font-display:'IBM Plex Sans Condensed',system-ui,sans-serif;
+    --font-body:'IBM Plex Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1115; --surface:#171a21; --surface-2:#1d212a;
+      --text:#e8eaf0; --text-2:#b6bcc9; --text-3:#8b93a3;
+      --border:#262b36; --border-soft:#20242d;
+      --good:#3FBF78; --good-rgb:63,191,120; --accent:#3CCBB0; --on-accent:#06251F; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1d212a;
+    --text:#e8eaf0; --text-2:#b6bcc9; --text-3:#8b93a3;
+    --border:#262b36; --border-soft:#20242d;
+    --good:#3FBF78; --good-rgb:63,191,120; --accent:#3CCBB0; --on-accent:#06251F; --bad:#F06A80; --heat:78,141,224; --heatneg:240,106,128;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{overflow-x:hidden;}
+  body{background:var(--bg); color:var(--text); font-family:var(--font-body); margin:0; padding:20px 16px; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:14px;}
+  header{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 24px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:28px; margin:0 0 2px;}
+  h2{font-family:var(--font-display); font-weight:700; font-size:18px; margin:0;}
+  h3{font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3); margin:0 0 8px; font-weight:600;}
+  .sub{margin:0; color:var(--text-2); font-size:13.5px; max-width:62ch;}
+  .meta{font-family:var(--font-mono); font-size:11.5px; color:var(--text-3);}
+  .controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .segmented{display:flex; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface);}
+  .segmented button{appearance:none; border:none; background:transparent; color:var(--text-2); font-family:var(--font-body);
+    font-weight:600; font-size:13px; padding:7px 12px; cursor:pointer;}
+  .segmented button + button{border-left:1px solid var(--border);}
+  .segmented button[aria-pressed="true"]{background:var(--accent); color:var(--on-accent); box-shadow:inset 0 -2px 0 rgba(0,0,0,.18);}
+  .segmented button:not([aria-pressed="true"]):hover{background:var(--surface-2); color:var(--text);}
+  .seasons-card{display:flex; flex-direction:column; gap:6px; background:var(--surface); border:1px solid var(--border-soft); border-radius:14px; box-shadow:var(--shadow); padding:12px 18px 8px; width:100%; max-width:640px;}
+  .seasons-head{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .seasons-head span{color:var(--text-2); font-size:14px;} .seasons-head b{color:var(--text); font-size:15px; margin-left:4px;}
+  .seasons-head button{appearance:none; border:1px solid var(--border); background:var(--surface-2); color:var(--text-3); font:inherit; font-size:12px; font-weight:600; padding:5px 10px; border-radius:8px; cursor:pointer;}
+  .seasons-head button:not(:disabled){color:var(--text); border-color:var(--accent);}
+  .seasons-head button:disabled{opacity:.6; cursor:default;}
+  .range{position:relative; height:30px; margin:2px 11px 0;}
+  .range .track,.range .fill{position:absolute; top:13px; height:4px; border-radius:2px;}
+  .range .track{left:0; right:0; background:var(--border);}
+  .range .fill{background:var(--accent);}
+  .range .dot{position:absolute; top:11px; width:8px; height:8px; margin-left:-4px; border-radius:50%; background:var(--surface); border:2px solid var(--border);}
+  .range .dot.on{border-color:var(--accent); background:var(--accent);}
+  .range input{position:absolute; left:-11px; width:calc(100% + 22px); top:0; height:30px; margin:0; background:none; pointer-events:none; -webkit-appearance:none; appearance:none;}
+  .range input::-webkit-slider-runnable-track{background:transparent; height:30px;}
+  .range input::-moz-range-track{background:transparent; height:30px;}
+  .range input::-webkit-slider-thumb{-webkit-appearance:none; pointer-events:auto; width:22px; height:22px; margin-top:4px; border-radius:50%; background:#fff; border:4px solid var(--accent); cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.35);}
+  .range input::-moz-range-thumb{pointer-events:auto; width:14px; height:14px; border-radius:50%; background:#fff; border:4px solid var(--accent); cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.35);}
+  .range input:focus-visible::-webkit-slider-thumb{outline:2px solid var(--text); outline-offset:2px;}
+  .range-labels{position:relative; height:20px; margin:0 11px;}
+  .range-labels button{position:absolute; transform:translateX(-50%); appearance:none; border:none; background:none; padding:2px 3px; font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--text-3); cursor:pointer;}
+  .range-labels button.in{color:var(--text);}
+  .hint{font-size:12px; color:var(--text-3);}
+  .panel{background:var(--surface); border:1px solid var(--border-soft); border-radius:14px; box-shadow:var(--shadow); padding:14px 16px;}
+  .panel-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px 16px; margin-bottom:10px;}
+  .note{font-size:12px; color:var(--text-3);}
+    .table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:7px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--border-soft);}
+  th:first-child,td:first-child,th.l,td.l{text-align:left;}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-3); font-weight:600; cursor:pointer; user-select:none; background:var(--surface);}
+  th[data-dir="asc"]::after{content:" ▲"; font-size:9px;}
+  th[data-dir="desc"]::after{content:" ▼"; font-size:9px;}
+  td{font-variant-numeric:tabular-nums; font-family:var(--font-mono); font-size:12.5px;}
+  td.l{font-family:var(--font-body); font-size:13px;}
+  td[data-t]{cursor:help;}
+  td[data-t]:hover{text-decoration:underline dotted var(--text-3); text-underline-offset:3px;}
+  #board tbody tr{cursor:pointer;}
+  tbody tr:hover{background:var(--surface-2);}
+  tr.sel td{background:var(--surface-2);}
+  .mgr{display:inline-flex; align-items:center; gap:7px; font-weight:600;}
+  .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .pos-pill{display:inline-block; min-width:30px; font-family:var(--font-mono); font-size:10.5px; color:var(--text-2); background:var(--surface-2); border-radius:4px; padding:1px 4px; text-align:center; margin-right:6px;}
+  .good{color:var(--good);} .bad{color:var(--bad);} .muted{color:var(--text-3);}
+  .tag{display:inline-block; font-family:var(--font-mono); font-size:10px; padding:1px 5px; border-radius:4px; border:1px solid var(--border); color:var(--text-2); margin-left:4px;}
+  #board td:first-child,#board th:first-child,.heat td:first-child,.heat th:first-child{position:sticky; left:0; z-index:1; background:var(--surface);}
+  #board tr.sel td:first-child,.heat tr.sel td:first-child{background:var(--surface-2);}
+  /* heatmap */
+  .heat td.c{font-family:var(--font-mono); text-align:center; min-width:62px; border-bottom:2px solid var(--surface); border-right:2px solid var(--surface); border-radius:4px; color:var(--text);}
+  .heat td.c.dim{color:var(--text-3);}
+  .heat th{text-align:center; cursor:default;}
+  .heat th:first-child{text-align:left;}
+  .heat th.cur{color:var(--text);}
+  .heat td.c small{color:inherit;opacity:.75;font-size:.8em}
+  .heat td.tot{font-weight:600;}
+  /* transaction cards */
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:760px){ .cards{grid-template-columns:1fr;} }
+  .list{list-style:none; margin:0; padding:0; font-size:13px;}
+  .list li{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border-soft); cursor:help;}
+  .list li:last-child{border-bottom:none;}
+  .list .main{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .list .ctx{display:block; color:var(--text-3); font-size:11.5px; font-family:var(--font-mono); margin-top:1px;}
+  .list .val{font-family:var(--font-mono); font-size:12.5px; white-space:nowrap; text-align:right;}
+  .list .wk{font-family:var(--font-mono); font-size:12.5px; color:var(--text-2);}
+  .list .val small{display:block; color:var(--text-3); font-size:11px;}
+  .filter-pill{display:inline-flex; align-items:center; gap:6px; font-size:12.5px; padding:4px 8px 4px 10px; border-radius:999px; background:var(--surface-2); color:var(--text);}
+  .filter-pill button{appearance:none; border:none; background:transparent; color:var(--text-2); cursor:pointer; font-size:14px; line-height:1; padding:0 2px;}
+  .toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  input[type=search]{font:inherit; font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); width:220px; max-width:100%;}
+  .tooltip{position:fixed; pointer-events:none; z-index:50; background:var(--text); color:var(--bg); font-size:12px; line-height:1.4;
+    padding:9px 11px; border-radius:8px; max-width:calc(100vw - 12px); opacity:0; transition:opacity .1s; box-shadow:var(--shadow);}
+  .tooltip .tt-cols{display:flex; gap:24px; align-items:flex-start;}
+  .tooltip .tt-h{font-weight:600; margin-bottom:5px;}
+  .tooltip table{font-size:11.5px; width:auto; border-collapse:collapse;}
+  .tooltip td{padding:1px 0; border:none; font-family:var(--font-mono); font-size:11.5px; color:inherit; white-space:nowrap; text-align:left;}
+  .tooltip td + td{padding-left:12px;}
+  .tooltip td.r{text-align:right;}
+  .tooltip .tt-f{margin-top:6px; padding-top:5px; border-top:1px solid color-mix(in srgb, var(--bg) 30%, transparent); opacity:.85;}
+  .tooltip .o{opacity:.6;}
+  @media (max-width:480px){ .tooltip{padding:8px 9px;} .tooltip td{font-size:10.5px;} .tooltip td + td{padding-left:8px;} .tooltip .tt-cols{gap:14px;} }   /* phone: fit more of a table row before it has to scroll */
+  details summary{cursor:pointer; font-weight:600; font-family:var(--font-display); font-size:16px;}
+  .method{font-size:13px; color:var(--text-2); line-height:1.55;}
+  .method dt{font-weight:600; color:var(--text); margin-top:8px;}
+  .method dd{margin:2px 0 0;}
+  .empty{color:var(--text-3); font-size:13px; padding:10px 0; cursor:default !important;}
+  .more{appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--text-2); font:inherit; font-size:12.5px; border-radius:8px; padding:6px 12px; cursor:pointer; margin-top:8px;}
+  .heat td.c.neg{color:var(--text);}
+  .par-tbl td{text-align:right;}
+  .tag.early{color:var(--good); border-color:color-mix(in srgb,var(--good) 45%,transparent);}
+  .tag.chase{color:var(--bad); border-color:color-mix(in srgb,var(--bad) 45%,transparent);}
+  .pos{color:var(--good);} 
+  .tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:-4px;}
+  .tabs a{font-family:var(--font-display); font-weight:600; font-size:14px; color:var(--text-3); text-decoration:none; padding:6px 12px; border-bottom:2px solid transparent; margin-bottom:-1px;}
+  .tabs a[aria-current="page"]{color:var(--text); border-bottom-color:var(--text);}
+  .tabs a:hover{color:var(--text);}
+  .cards.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .cards > *{min-width:0;}
+  .list.scroll{max-height:440px; overflow-y:auto; overscroll-behavior:contain; padding-right:6px; margin-right:-6px;
+    mask-image:linear-gradient(to bottom, #000 calc(100% - 24px), transparent); -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 24px), transparent); padding-bottom:16px;}
+  h3 .cnt{font-weight:500; letter-spacing:0; text-transform:none; color:var(--text-3);}
+  @media (max-width:1000px){ .cards.three{grid-template-columns:1fr;} }
+  .heat td.c.g{padding:4px 6px; min-width:34px; font-weight:600;}
+  .heat th.po,.heat td.po{border-left:2px solid var(--border);}
+  .heat th.sm{min-width:34px; padding-left:4px; padding-right:4px;}
+  .shots-list td.l.pl{white-space:normal;}
+  .tt-p{display:flex; justify-content:space-between; gap:14px;}
+  .pn.ok{color:var(--good);} .pn.owed{color:var(--bad);} .pn.gr{color:var(--text-3);}
+  .tooltip .pn.ok{color:#5fe39a;} .tooltip .pn.owed{color:#ff8a9a;} .tooltip .pn.gr{color:inherit; opacity:.6;}
+  .legend{display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; color:var(--text-3); margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="tabs"><a href="index.html">Pickups</a><a href="lineup.html">Sit / start</a><a href="shotguns.html" aria-current="page">Shotguns</a></nav>
+  <header>
+    <div>
+      <h1>Shotguns</h1>
+      <p class="sub">A starter (never a defense) who took the field and scored <b>zero or less</b>. A starter ruled out in his own game does not count. Pick the seasons below.</p>
+    </div>
+    <div class="meta" id="updated">Loading…</div>
+  </header>
+
+  <div class="controls">
+    <div class="seasons-card" id="seasonCard">
+      <div class="seasons-head"><span>Seasons:<b id="seasonLbl"></b></span><button id="seasonReset" type="button">Reset to all years</button></div>
+      <div class="range" id="range"><div class="track"></div><div class="fill" id="rfill"></div><div id="rdots"></div>
+        <input type="range" id="r0" aria-label="From season"><input type="range" id="r1" aria-label="To season"></div>
+      <div class="range-labels" id="rlabels"></div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Shotguns by manager</h2>
+      <span class="note" id="boardNote">Hover or tap a number for the players.</span>
+    </div>
+    <div class="table-wrap"><table id="board"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>By manager, by week</h2>
+      <span class="note">darker = more Shotguns that week · hover or tap a cell for the players · weeks after the divider are playoff weeks</span>
+    </div>
+    <div id="weeks"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Every Shotgun</h2>
+      <span class="note" id="listNote"></span>
+    </div>
+    <div class="table-wrap"><table class="shots-list" id="list"><thead></thead><tbody></tbody></table></div>
+    <div class="legend"><span><b class="pn owed">Red</b> punishment still owed</span><span><b class="pn ok">Green</b> served</span><span><b class="pn gr">Grey</b> before punishments began (2025)</span></div>
+    <button class="more" id="moreBtn" type="button" hidden>Show more</button>
+  </section>
+</div>
+<div class="tooltip" id="tip" role="tooltip"></div>
+<script>
+const PALETTE_LIGHT = ['#157eed','#e81c52','#d44f14','#b07014','#967f15','#619115','#199950','#0d9298','#188db1','#7961f9','#b326f9','#d21cba','#5f7187','#8a6440'];
+const PALETTE_DARK  = ['#3b8ff4','#f64063','#e85d25','#c27e26','#a68e26','#6ea127','#2ca95e','#2ba1a7','#2b9dc2','#877bf4','#b959f4','#e630cc','#8597ac','#b08860'];
+const state = { s0:0, s1:9999, limit:60 };
+const TOUCH = matchMedia('(hover: none)').matches;
+let DATA = null, SG = null, TIPS = [];
+function isDark(){ const t=document.documentElement.getAttribute('data-theme'); if(t) return t==='dark'; return matchMedia('(prefers-color-scheme: dark)').matches; }
+function colorOf(m){ const i = DATA.managers.indexOf(m); const p = isDark()?PALETTE_DARK:PALETTE_LIGHT; return i<0 ? 'var(--text-3)' : p[i % p.length]; }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mgrHtml = m => `<span class="mgr"><span class="dot" style="background:${colorOf(m)}"></span>${esc(m)}</span>`;
+const seasonMeta = s => DATA.seasons.find(x=>x.s===s);
+function tipAttr(fn){ TIPS.push(fn); return ` data-t="${TIPS.length-1}"`; }
+const ptsTxt = v => (v>0?'+':'') + (+v).toFixed(1);
+// one team-season: its Shotguns in the weeks it actually played
+function teamShots(s, t){ const sx = SG.seasons[String(s)]; return ((sx && sx.rosters[String(t.rid)]) || []).filter(x => x.week <= (t.weeks || 99)).map(x => ({...x, season:s})); }
+// Shotguns carry a real-world punishment, which began in 2025: before that none (grey); 2025 all served (green); later ones red until they are marked served (green)
+const punish = x => x.season < 2025 ? 'gr' : x.season === 2025 ? 'ok' : (x.done ? 'ok' : 'owed');
+const pnHtml = x => `<span class="pn ${punish(x)}">${esc(x.full)}</span>`;
+function seasonsInRange(){ return DATA.seasons.filter(m => m.s>=state.s0 && m.s<=state.s1 && SG.seasons[String(m.s)]).map(m=>m.s).sort((a,b)=>b-a); }
+function shotTip(title, shots, withSeason){
+  const rows = shots.map(x => `<tr><td>${withSeason?x.season+' ':''}Wk ${x.week}</td><td>${pnHtml(x)} <span class="o">${esc(x.pos||'')}</span></td><td class="r">${ptsTxt(x.pts)}</td></tr>`).join('');
+  return `<div class="tt-h">${title}</div><table>${rows || '<tr><td class="o">None.</td></tr>'}</table>`;
+}
+
+/* ---------- tooltip plumbing ---------- */
+const tip = document.getElementById('tip');
+let tipOwner = null;
+function showTip(ev, html){
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const w = tip.offsetWidth, h = tip.offsetHeight, pad = 14;
+  let x = ev.clientX + pad, y = ev.clientY + pad;
+  if(x + w > innerWidth - 6) x = Math.max(6, ev.clientX - w - pad);
+  if(y + h > innerHeight - 6) y = Math.max(6, ev.clientY - h - pad);
+  if(y < 6) y = 6;
+  tip.style.left = x+'px'; tip.style.top = y+'px';
+}
+function hideTip(){ tip.style.opacity = 0; tipOwner = null; }
+document.addEventListener('mousemove', ev => {
+  if(TOUCH) return;
+  const el = ev.target.closest('[data-t]');
+  if(!el){ if(tipOwner) hideTip(); return; }
+  const fn = TIPS[+el.dataset.t]; if(!fn) return;
+  if(tipOwner !== el){ tipOwner = el; tip.innerHTML = fn(); }
+  showTip(ev, tip.innerHTML);
+});
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-t]');
+  if(TOUCH && el && TIPS[+el.dataset.t]){
+    if(tipOwner === el){ hideTip(); return; }
+    tipOwner = el; showTip(ev, TIPS[+el.dataset.t]()); return;
+  }
+  if(TOUCH) hideTip();
+});
+addEventListener('scroll', () => { if(TOUCH) hideTip(); }, {passive:true});
+
+/* ---------- render ---------- */
+function renderBoard(){
+  const yrs = seasonsInRange().sort((a,b)=>a-b);
+  const rows = {};
+  yrs.forEach(s => seasonMeta(s).teams.forEach(t => {
+    const shots = teamShots(s, t);
+    const r = rows[t.m] || (rows[t.m] = {m:t.m, by:{}, all:[], weeks:0});
+    r.by[s] = shots; r.all.push(...shots); r.weeks += t.weeks || 0;
+  }));
+  const list = Object.values(rows).sort((a,b) => b.all.length - a.all.length || a.m.localeCompare(b.m));
+  const multi = yrs.length > 1;
+  document.querySelector('#board thead').innerHTML = '<tr><th class="l">Manager</th><th>Total</th>' + (multi ? yrs.map(s=>`<th>\u2019${String(s).slice(2)}</th>`).join('') : '') + '<th>Per 14 wks</th></tr>';
+  document.querySelector('#board tbody').innerHTML = list.map(r => {
+    const per = r.weeks ? (r.all.length / r.weeks * 14).toFixed(1) : '\u2014';
+    return `<tr><td class="l">${mgrHtml(r.m)}</td><td${r.all.length?tipAttr(()=>shotTip(esc(r.m)+' \u00b7 '+r.all.length+' Shotguns', r.all, multi)):''}><b>${r.all.length}</b></td>` +
+      (multi ? yrs.map(s => { const sh = r.by[s]; return sh === undefined ? '<td class="muted">\u2013</td>' : `<td${sh.length?tipAttr(()=>shotTip(esc(r.m)+' \u00b7 '+s, sh)):''}${sh.length?'':' class="muted"'}>${sh.length}</td>`; }).join('') : '') +
+      `<td class="muted">${per}</td></tr>`;
+  }).join('');
+  const tot = list.reduce((n,r)=>n+r.all.length,0);
+  document.getElementById('boardNote').textContent = `${tot} Shotgun${tot===1?'':'s'} in ${yrs.length===1?yrs[0]:yrs[0]+'\u2013'+yrs[yrs.length-1]}. Hover or tap a number for the players.`;
+}
+function renderWeeks(){
+  const box = document.getElementById('weeks');
+  box.innerHTML = seasonsInRange().map(s => {
+    const m = seasonMeta(s), maxW = Math.max(...m.teams.map(t=>t.weeks||0), 1), reg = Math.min(m.reg_end || maxW, maxW);
+    const teams = m.teams.map(t => ({t, shots: teamShots(s, t)})).sort((a,b) => b.shots.length - a.shots.length || a.t.m.localeCompare(b.t.m));
+    const total = teams.reduce((n,x)=>n+x.shots.length,0);
+    let h = `<h3>${s}${m.finished?'':' (through week '+m.done+')'} <span class="cnt">\u00b7 ${total} Shotgun${total===1?'':'s'}</span></h3><div class="table-wrap"><table class="heat"><thead><tr><th class="l">Manager</th>`;
+    for(let w=1; w<=maxW; w++) h += `<th class="sm${w===reg+1?' po':''}">${w}</th>`;
+    h += '<th>Total</th></tr></thead><tbody>';
+    teams.forEach(({t, shots}) => {
+      h += `<tr><td class="l">${mgrHtml(t.m)}</td>`;
+      for(let w=1; w<=maxW; w++){
+        const po = w===reg+1 ? ' po' : '';
+        if(w > (t.weeks||0)){ h += `<td class="c g muted${po}"></td>`; continue; }
+        const here = shots.filter(x=>x.week===w), n = here.length;
+        h += n ? `<td class="c g${po}" style="background:rgba(var(--heatneg),${Math.min(.28+.22*n,.8)})"${tipAttr(()=>shotTip(esc(t.m)+' \u00b7 '+s+' week '+w, here))}>${n}</td>` : `<td class="c g dim${po}">\u00b7</td>`;
+      }
+      h += `<td class="tot"${shots.length?tipAttr(()=>shotTip(esc(t.m)+' \u00b7 '+s, shots)):''}>${shots.length}</td></tr>`;
+    });
+    return h + '</tbody></table></div>';
+  }).join('') || '<div class="empty">No seasons in this range.</div>';
+}
+function renderList(){
+  const all = [];
+  seasonsInRange().forEach(s => seasonMeta(s).teams.forEach(t => teamShots(s, t).forEach(x => all.push({...x, m:t.m}))));
+  all.sort((a,b) => b.season-a.season || b.week-a.week || a.m.localeCompare(b.m) || a.player.localeCompare(b.player));
+  document.querySelector('#list thead').innerHTML = '<tr><th class="l">Season</th><th>Wk</th><th class="l">Manager</th><th class="l">Player</th><th class="l">Pos</th><th>Pts</th></tr>';
+  document.querySelector('#list tbody').innerHTML = all.slice(0, state.limit).map(x => `<tr><td class="l">${x.season}</td><td>${x.week}</td><td class="l">${mgrHtml(x.m)}</td><td class="l pl">${pnHtml(x)}</td><td class="l"><span class="pos-pill">${esc(x.pos||'')}</span></td><td>${ptsTxt(x.pts)}</td></tr>`).join('') || '<tr><td class="empty" colspan="6">No Shotguns in these seasons.</td></tr>';
+  document.getElementById('listNote').textContent = all.length ? `${Math.min(state.limit, all.length)} of ${all.length}, newest first` : '';
+  const more = document.getElementById('moreBtn'); more.hidden = all.length <= state.limit;
+}
+function renderAll(){ TIPS = []; hideTip(); renderBoard(); renderWeeks(); renderList(); }
+
+Promise.all([fetch('data.json?_=' + Date.now()).then(r => r.json()), fetch('/shotguns_all.json?_=' + Date.now()).then(r => r.json())]).then(([d, sg]) => {
+  DATA = d; SG = sg;
+  const gen = new Date(sg.generatedAt || d.generated);
+  document.getElementById('updated').textContent = `Updated ${gen.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`;
+  const yrs = d.seasons.map(s=>s.s).filter(s => sg.seasons[String(s)]), Y0 = yrs[0], Y1 = yrs[yrs.length-1], N = yrs.length;
+  const q = new URLSearchParams(location.search), qs = parseInt(q.get('season'), 10);
+  state.s0 = yrs.includes(qs) ? qs : Y0; state.s1 = yrs.includes(qs) ? qs : Y1;
+  const r0 = document.getElementById('r0'), r1 = document.getElementById('r1');
+  [r0,r1].forEach(r => { r.min = Y0; r.max = Y1; r.step = 1; });
+  const pctOf = y => N>1 ? (y-Y0)/(Y1-Y0)*100 : 0;
+  document.getElementById('rdots').innerHTML = yrs.map(y => `<div class="dot" data-y="${y}" style="left:${pctOf(y)}%"></div>`).join('');
+  const rl = document.getElementById('rlabels');
+  rl.innerHTML = yrs.map(y => `<button type="button" data-y="${y}" style="left:${pctOf(y)}%">\u2019${String(y).slice(2)}${seasonMeta(y).finished?'':'*'}</button>`).join('');
+  const syncRange = () => {
+    r0.value = state.s0; r1.value = state.s1;
+    document.getElementById('rfill').style.cssText = `left:${pctOf(state.s0)}%; width:${pctOf(state.s1)-pctOf(state.s0)}%`;
+    document.querySelectorAll('#rdots .dot').forEach(x => x.classList.toggle('on', +x.dataset.y>=state.s0 && +x.dataset.y<=state.s1));
+    rl.querySelectorAll('button').forEach(x => x.classList.toggle('in', +x.dataset.y>=state.s0 && +x.dataset.y<=state.s1));
+    document.getElementById('seasonLbl').textContent = state.s0===state.s1 ? ' '+state.s0 : ` ${state.s0}\u2013${state.s1}`;
+    document.getElementById('seasonReset').disabled = state.s0===Y0 && state.s1===Y1;
+  };
+  const setRange = (a,b) => { state.s0 = Math.min(a,b); state.s1 = Math.max(a,b); state.limit = 60; syncRange(); renderAll(); };
+  r0.oninput = () => setRange(Math.min(+r0.value, state.s1), state.s1);
+  r1.oninput = () => setRange(state.s0, Math.max(+r1.value, state.s0));
+  rl.querySelectorAll('button').forEach(x => x.onclick = () => setRange(+x.dataset.y, +x.dataset.y));
+  document.getElementById('seasonReset').onclick = () => setRange(Y0, Y1);
+  document.getElementById('moreBtn').onclick = () => { state.limit += 100; renderList(); };
+  syncRange(); renderAll();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', renderAll);
+}).catch(err => { document.getElementById('updated').textContent = 'Could not load the data \u2014 ' + err; });
+</script>
+<script>window.DTF_VIEWS = {"hide": "nav.tabs", "items": [{"label": "Pickups", "href": "index.html"}, {"label": "Sit / start", "href": "lineup.html"}, {"label": "Shotguns", "href": "shotguns.html"}]};</script>
+<script>window.DTF_TIPS = ["#tip"];</script>
+<script src="/shell/nav.js" defer></script>
+</body>
+</html>
