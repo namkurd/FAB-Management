@@ -157,6 +157,9 @@
   .heat th.sm{min-width:34px; padding-left:4px; padding-right:4px;}
   .shots-list td.l.pl{white-space:normal;}
   .tt-p{display:flex; justify-content:space-between; gap:14px;}
+  .pn.ok{color:var(--good);} .pn.owed{color:var(--bad);} .pn.gr{color:var(--text-3);}
+  .tooltip .pn.ok{color:#5fe39a;} .tooltip .pn.owed{color:#ff8a9a;} .tooltip .pn.gr{color:inherit; opacity:.6;}
+  .legend{display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; color:var(--text-3); margin-top:8px;}
 </style>
 </head>
 <body>
@@ -201,6 +204,7 @@
       <span class="note" id="listNote"></span>
     </div>
     <div class="table-wrap"><table class="shots-list" id="list"><thead></thead><tbody></tbody></table></div>
+    <div class="legend"><span><b class="pn owed">Red</b> punishment still owed</span><span><b class="pn ok">Green</b> served</span><span><b class="pn gr">Grey</b> before punishments began (2025)</span></div>
     <button class="more" id="moreBtn" type="button" hidden>Show more</button>
   </section>
 </div>
@@ -219,10 +223,13 @@ const seasonMeta = s => DATA.seasons.find(x=>x.s===s);
 function tipAttr(fn){ TIPS.push(fn); return ` data-t="${TIPS.length-1}"`; }
 const ptsTxt = v => (v>0?'+':'') + (+v).toFixed(1);
 // one team-season: its Shotguns in the weeks it actually played
-function teamShots(s, t){ const sx = SG.seasons[String(s)]; return ((sx && sx.rosters[String(t.rid)]) || []).filter(x => x.week <= (t.weeks || 99)); }
+function teamShots(s, t){ const sx = SG.seasons[String(s)]; return ((sx && sx.rosters[String(t.rid)]) || []).filter(x => x.week <= (t.weeks || 99)).map(x => ({...x, season:s})); }
+// Shotguns carry a real-world punishment, which began in 2025: before that none (grey); 2025 all served (green); later ones red until they are marked served (green)
+const punish = x => x.season < 2025 ? 'gr' : x.season === 2025 ? 'ok' : (x.done ? 'ok' : 'owed');
+const pnHtml = x => `<span class="pn ${punish(x)}">${esc(x.full)}</span>`;
 function seasonsInRange(){ return DATA.seasons.filter(m => m.s>=state.s0 && m.s<=state.s1 && SG.seasons[String(m.s)]).map(m=>m.s).sort((a,b)=>b-a); }
 function shotTip(title, shots, withSeason){
-  const rows = shots.map(x => `<tr><td>${withSeason?x.season+' ':''}Wk ${x.week}</td><td>${esc(x.full)} <span class="o">${esc(x.pos||'')}</span></td><td class="r">${ptsTxt(x.pts)}</td></tr>`).join('');
+  const rows = shots.map(x => `<tr><td>${withSeason?x.season+' ':''}Wk ${x.week}</td><td>${pnHtml(x)} <span class="o">${esc(x.pos||'')}</span></td><td class="r">${ptsTxt(x.pts)}</td></tr>`).join('');
   return `<div class="tt-h">${title}</div><table>${rows || '<tr><td class="o">None.</td></tr>'}</table>`;
 }
 
@@ -262,7 +269,7 @@ function renderBoard(){
   const yrs = seasonsInRange().sort((a,b)=>a-b);
   const rows = {};
   yrs.forEach(s => seasonMeta(s).teams.forEach(t => {
-    const shots = teamShots(s, t).map(x => ({...x, season:s}));
+    const shots = teamShots(s, t);
     const r = rows[t.m] || (rows[t.m] = {m:t.m, by:{}, all:[], weeks:0});
     r.by[s] = shots; r.all.push(...shots); r.weeks += t.weeks || 0;
   }));
@@ -302,10 +309,10 @@ function renderWeeks(){
 }
 function renderList(){
   const all = [];
-  seasonsInRange().forEach(s => seasonMeta(s).teams.forEach(t => teamShots(s, t).forEach(x => all.push({...x, season:s, m:t.m}))));
+  seasonsInRange().forEach(s => seasonMeta(s).teams.forEach(t => teamShots(s, t).forEach(x => all.push({...x, m:t.m}))));
   all.sort((a,b) => b.season-a.season || b.week-a.week || a.m.localeCompare(b.m) || a.player.localeCompare(b.player));
   document.querySelector('#list thead').innerHTML = '<tr><th class="l">Season</th><th>Wk</th><th class="l">Manager</th><th class="l">Player</th><th class="l">Pos</th><th>Pts</th></tr>';
-  document.querySelector('#list tbody').innerHTML = all.slice(0, state.limit).map(x => `<tr><td class="l">${x.season}</td><td>${x.week}</td><td class="l">${mgrHtml(x.m)}</td><td class="l pl">${esc(x.full)}</td><td class="l"><span class="pos-pill">${esc(x.pos||'')}</span></td><td>${ptsTxt(x.pts)}</td></tr>`).join('') || '<tr><td class="empty" colspan="6">No Shotguns in these seasons.</td></tr>';
+  document.querySelector('#list tbody').innerHTML = all.slice(0, state.limit).map(x => `<tr><td class="l">${x.season}</td><td>${x.week}</td><td class="l">${mgrHtml(x.m)}</td><td class="l pl">${pnHtml(x)}</td><td class="l"><span class="pos-pill">${esc(x.pos||'')}</span></td><td>${ptsTxt(x.pts)}</td></tr>`).join('') || '<tr><td class="empty" colspan="6">No Shotguns in these seasons.</td></tr>';
   document.getElementById('listNote').textContent = all.length ? `${Math.min(state.limit, all.length)} of ${all.length}, newest first` : '';
   const more = document.getElementById('moreBtn'); more.hidden = all.length <= state.limit;
 }
