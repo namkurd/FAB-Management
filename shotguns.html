@@ -155,7 +155,10 @@
   .heat td.c.g{padding:4px 6px; min-width:34px; font-weight:600;}
   .heat th.po,.heat td.po{border-left:2px solid var(--border);}
   .heat th.sm{min-width:34px; padding-left:4px; padding-right:4px;}
-  .shots-list td.l.pl{white-space:normal;}
+  .fit-row{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-start;}
+  .panel.fit{width:auto; flex:0 0 auto; max-width:100%;}
+  .panel.fit table{width:auto;} .panel.fit th,.panel.fit td{padding:6px 9px;}
+  .shots-list{width:auto;} .shots-list th,.shots-list td{padding:6px 9px; white-space:nowrap;}
   .tt-p{display:flex; justify-content:space-between; gap:14px;}
   .pn.ok{color:var(--good);} .pn.owed{color:var(--bad);} .pn.gr{color:var(--text-3);}
   .tooltip .pn.ok{color:#5fe39a;} .tooltip .pn.owed{color:#ff8a9a;} .tooltip .pn.gr{color:inherit; opacity:.6;}
@@ -182,13 +185,22 @@
     </div>
   </div>
 
-  <section class="panel">
-    <div class="panel-head">
-      <h2>Shotguns by manager</h2>
-      <span class="note" id="boardNote">Hover or tap a number for the players.</span>
-    </div>
-    <div class="table-wrap"><table id="board"><thead></thead><tbody></tbody></table></div>
-  </section>
+  <div class="fit-row">
+    <section class="panel fit">
+      <div class="panel-head">
+        <h2>By manager</h2>
+        <span class="note" id="boardNote"></span>
+      </div>
+      <div class="table-wrap"><table id="board"><thead></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel fit">
+      <div class="panel-head">
+        <h2>By player</h2>
+        <span class="note" id="playerNote"></span>
+      </div>
+      <div class="table-wrap"><table id="players"><thead></thead><tbody></tbody></table></div>
+    </section>
+  </div>
 
   <section class="panel">
     <div class="panel-head">
@@ -275,15 +287,30 @@ function renderBoard(){
   }));
   const list = Object.values(rows).sort((a,b) => b.all.length - a.all.length || a.m.localeCompare(b.m));
   const multi = yrs.length > 1;
-  document.querySelector('#board thead').innerHTML = '<tr><th class="l">Manager</th><th>Total</th>' + (multi ? yrs.map(s=>`<th>\u2019${String(s).slice(2)}</th>`).join('') : '') + '<th>Per 14 wks</th></tr>';
+  document.querySelector('#board thead').innerHTML = '<tr><th class="l">Manager</th><th>Total</th>' + (multi ? yrs.map(s=>`<th>\u2019${String(s).slice(2)}</th>`).join('') : '') + '</tr>';
   document.querySelector('#board tbody').innerHTML = list.map(r => {
-    const per = r.weeks ? (r.all.length / r.weeks * 14).toFixed(1) : '\u2014';
     return `<tr><td class="l">${mgrHtml(r.m)}</td><td${r.all.length?tipAttr(()=>shotTip(esc(r.m)+' \u00b7 '+r.all.length+' Shotguns', r.all, multi)):''}><b>${r.all.length}</b></td>` +
       (multi ? yrs.map(s => { const sh = r.by[s]; return sh === undefined ? '<td class="muted">\u2013</td>' : `<td${sh.length?tipAttr(()=>shotTip(esc(r.m)+' \u00b7 '+s, sh)):''}${sh.length?'':' class="muted"'}>${sh.length}</td>`; }).join('') : '') +
-      `<td class="muted">${per}</td></tr>`;
+      `</tr>`;
   }).join('');
   const tot = list.reduce((n,r)=>n+r.all.length,0);
-  document.getElementById('boardNote').textContent = `${tot} Shotgun${tot===1?'':'s'} in ${yrs.length===1?yrs[0]:yrs[0]+'\u2013'+yrs[yrs.length-1]}. Hover or tap a number for the players.`;
+  document.getElementById('boardNote').textContent = `${tot} in ${yrs.length===1?yrs[0]:yrs[0]+'\u2013'+yrs[yrs.length-1]}`;
+  renderPlayers(yrs);
+}
+function renderPlayers(yrs){
+  const by = {};
+  yrs.forEach(s => seasonMeta(s).teams.forEach(t => teamShots(s, t).forEach(x => {
+    const k = x.full + '|' + (x.pos||''), r = by[k] || (by[k] = {full:x.full, pos:x.pos, shots:[]});
+    r.shots.push({...x, m:t.m});
+  })));
+  const list = Object.values(by).filter(r => r.shots.length).sort((a,b) => b.shots.length - a.shots.length || a.full.localeCompare(b.full));
+  const multi = yrs.length > 1;
+  document.querySelector('#players thead').innerHTML = '<tr><th class="l">Player</th><th>Shotguns</th></tr>';
+  document.querySelector('#players tbody').innerHTML = list.map(r => {
+    const rows = r.shots.map(x => `<tr><td>${multi?x.season+' ':''}Wk ${x.week}</td><td>${esc(x.m)}</td><td class="r">${ptsTxt(x.pts)}</td></tr>`).join('');
+    return `<tr><td class="l">${esc(r.full)} <span class="pos-pill">${esc(r.pos||'')}</span></td><td${tipAttr(()=>`<div class="tt-h">${esc(r.full)}</div><table>${rows}</table>`)}><b>${r.shots.length}</b></td></tr>`;
+  }).join('') || '<tr><td class="empty" colspan="2">None.</td></tr>';
+  document.getElementById('playerNote').textContent = `${list.length} player${list.length===1?'':'s'}`;
 }
 function renderWeeks(){
   const box = document.getElementById('weeks');
@@ -312,7 +339,7 @@ function renderList(){
   seasonsInRange().forEach(s => seasonMeta(s).teams.forEach(t => teamShots(s, t).forEach(x => all.push({...x, m:t.m}))));
   all.sort((a,b) => b.season-a.season || b.week-a.week || a.m.localeCompare(b.m) || a.player.localeCompare(b.player));
   document.querySelector('#list thead').innerHTML = '<tr><th class="l">Season</th><th>Wk</th><th class="l">Manager</th><th class="l">Player</th><th class="l">Pos</th><th>Pts</th></tr>';
-  document.querySelector('#list tbody').innerHTML = all.slice(0, state.limit).map(x => `<tr><td class="l">${x.season}</td><td>${x.week}</td><td class="l">${mgrHtml(x.m)}</td><td class="l pl">${pnHtml(x)}</td><td class="l"><span class="pos-pill">${esc(x.pos||'')}</span></td><td>${ptsTxt(x.pts)}</td></tr>`).join('') || '<tr><td class="empty" colspan="6">No Shotguns in these seasons.</td></tr>';
+  document.querySelector('#list tbody').innerHTML = all.slice(0, state.limit).map(x => `<tr><td class="l">${x.season}</td><td>${x.week}</td><td class="l">${mgrHtml(x.m)}</td><td class="l">${pnHtml(x)}</td><td class="l"><span class="pos-pill">${esc(x.pos||'')}</span></td><td>${ptsTxt(x.pts)}</td></tr>`).join('') || '<tr><td class="empty" colspan="6">No Shotguns in these seasons.</td></tr>';
   document.getElementById('listNote').textContent = all.length ? `${Math.min(state.limit, all.length)} of ${all.length}, newest first` : '';
   const more = document.getElementById('moreBtn'); more.hidden = all.length <= state.limit;
 }
