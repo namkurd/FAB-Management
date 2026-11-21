@@ -60,3 +60,17 @@ def test_current_week_rolls_over_on_tuesday_morning():
     assert current_week(state, dt.datetime(2026, 11, 17, 5, 0, tzinfo=utc)) == 11    # the new week, whatever Sleeper says
     assert current_week(state, dt.datetime(2026, 11, 23, 12, 0, tzinfo=utc)) == 11
     assert current_week(state, dt.datetime(2026, 9, 1, tzinfo=utc)) == 10            # before the season: falls back to Sleeper's number
+
+
+def test_ingame_injury_is_exempt():
+    from ir_check import apply_ingame_exemption
+    players = {"7": {"full_name": "In-Game Hurt", "position": "RB", "team": "IND", "injury_status": "Out", "gsis_id": "g7"},
+               "8": {"full_name": "Already Out", "position": "WR", "team": "BUF", "injury_status": "Out", "gsis_id": "g8"},
+               "9": {"full_name": "Played Doubtful", "position": "TE", "team": "DAL", "injury_status": "Out", "gsis_id": "g9"}}
+    rosters = [{"roster_id": 1, "owner_id": "a", "players": ["7", "8", "9"], "reserve": None, "starters": [], "taxi": None}]
+    txns = [{"status": "complete", "type": "waiver", "leg": 10, "created": 1, "adds": {"7": 1, "8": 1, "9": 1}}]
+    rep = build_report(rosters, week_arrivals(txns, 10), players, DEFAULT_STATUSES)
+    stats = {10: {"7": {"gp": 1, "off_snp": 17}, "9": {"gp": 1, "off_snp": 20}}}      # 7 and 9 played week 10; 8 did not
+    apply_ingame_exemption(rep, stats, {10: {"g9"}}, players)                       # 9 was listed Doubtful before the game
+    assert [r["player"] for r in rep["blocked"]] == ["Already Out", "Played Doubtful"]
+    assert [r["player"] for r in rep["exempt"]] == ["In-Game Hurt"]

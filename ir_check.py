@@ -6,6 +6,11 @@ League rule: a player who is NEW to a team this week (waiver claim, free agent, 
 commissioner move... anything that put him on that roster during the current week)
 CANNOT be placed on IR in his first week there. From the next week on he can be.
 
+Exception (the league's reading of the rule): it only applies to a player who was already Out / Doubtful / on IR BEFORE the game of
+the week he was picked up in (the week Sleeper stamps on the claim, its `leg`). A player who played that week's game healthy and got hurt IN
+it (or after) is not blocked, e.g. S. McGowan: claimed after week 10, played week 10 and was injured in that game. "Played" is Sleeper's stats
+(a game played, snaps taken) and "before the game" is the NFL's final injury report (nflverse injuries_<season>.csv, Out or Doubtful).
+
 This script walks every roster and reports players who are Doubtful / Out / COVID / IR
 on the NFL side (see --statuses) and who arrived this week:
 
@@ -106,7 +111,7 @@ def slot_of(roster, pid):
 
 def build_report(rosters, arrivals, players, statuses):
     """Pure function (no network) so it can be unit tested."""
-    out = {"violations": [], "blocked": []}
+    out = {"violations": [], "blocked": [], "exempt": []}
     for roster in rosters:
         rid = roster["roster_id"]
         for pid in roster.get("players") or []:
@@ -133,11 +138,55 @@ def build_report(rosters, arrivals, players, statuses):
                 "roster_id": rid,
                 "owner_id": roster.get("owner_id"),
                 "added_at_ms": txn.get("created"),
+                "leg": txn.get("leg"),
                 **describe_arrival(txn, pid),
             }
             out["violations" if slot == "IR" else "blocked"].append(row)
     for k in out:
         out[k].sort(key=lambda r: (r["roster_id"], r["player"]))
+    return out
+
+
+def played_that_week(stats):
+    """Did he take the field in that week's game? (a game played and at least one snap; a bye or a DNP has no stats line)"""
+    x = stats or {}
+    return bool(x.get("gp")) and (x.get("off_snp", 0) or 0) + (x.get("def_snp", 0) or 0) + (x.get("st_snp", 0) or 0) > 0
+
+
+def apply_ingame_exemption(report, stats_by_leg, flagged_by_leg, players):
+    """Moves a hurt player out of the report when he played the game of the week he was picked up in and was NOT on the NFL's injury report as
+    Out / Doubtful before it (so he was hurt in that game or later, which the rule does not cover). `stats_by_leg[leg]` is Sleeper's stats for
+    that week; `flagged_by_leg[leg]` is the set of gsis ids listed Out or Doubtful. Returns the exempted rows (also left in report["exempt"])."""
+    exempt = []
+    for key in ("violations", "blocked"):
+        keep = []
+        for r in report[key]:
+            leg = r.get("leg")
+            st = (stats_by_leg.get(leg) or {}).get(r["player_id"]) if leg is not None else None
+            gsis = (players.get(r["player_id"]) or {}).get("gsis_id")
+            if leg is not None and leg in stats_by_leg and played_that_week(st) and gsis not in (flagged_by_leg.get(leg) or set()):
+                exempt.append({**r, "reason": "played week %s healthy, hurt in or after the game" % leg})
+            else:
+                keep.append(r)
+        report[key] = keep
+    report["exempt"] = exempt
+    return exempt
+
+
+def nflverse_flagged(season, weeks):
+    """{week: {gsis ids listed Out or Doubtful on the NFL's final injury report that week}} from nflverse (empty sets if it cannot be read)."""
+    import csv, io
+    out = {w: set() for w in weeks}
+    try:
+        r = requests.get(f"https://github.com/nflverse/nflverse-data/releases/download/injuries/injuries_{season}.csv", timeout=90)
+        r.raise_for_status()
+        for row in csv.DictReader(io.StringIO(r.text)):
+            try: w = int(float(row.get("week") or 0))
+            except ValueError: continue
+            if w in out and (row.get("report_status") or "").strip().lower() in ("out", "doubtful"):
+                out[w].add(row.get("gsis_id"))
+    except Exception as e:  # noqa: BLE001
+        print(f"(nflverse injury report unavailable: {e})", file=sys.stderr)
     return out
 
 
@@ -207,6 +256,15 @@ def main():
 
     statuses = {s.strip().lower() for s in args.statuses.split(",") if s.strip()}
     report = build_report(rosters, week_arrivals(txns, week, window), players, statuses)
+    legs = sorted({r["leg"] for k in ("violations", "blocked") for r in report[k] if r.get("leg") is not None})
+    if legs:
+        season = int(league.get("season") or dt.date.today().year)
+        stats_by_leg = {}
+        for leg in legs:
+            try: stats_by_leg[leg] = get(f"/stats/nfl/regular/{season}/{leg}")
+            except Exception as e:  # noqa: BLE001
+                print(f"(Sleeper stats for week {leg} unavailable: {e})", file=sys.stderr)
+        apply_ingame_exemption(report, stats_by_leg, nflverse_flagged(season, legs), players)
     owners = owner_names(rosters, users)
 
     if args.json:
